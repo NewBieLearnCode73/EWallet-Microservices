@@ -1,0 +1,54 @@
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '4.0.3' apply false
+  id 'io.spring.dependency-management' version '1.1.7'
+}
+
+allprojects {
+    group = 'com.dinhchieu.ewallet'
+    version = '1.0.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+ext {
+	set('springCloudVersion', "2025.1.0")
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        implementation("org.mapstruct:mapstruct:1.6.3")
+        implementation 'org.springframework.boot:spring-boot-starter-cache'
+        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+        
+        annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
+        annotationProcessor 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+}

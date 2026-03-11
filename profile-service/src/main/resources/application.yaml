@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: profile_service
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/profile_db
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9999/realms/ewallet-realm
+
+server:
+  port: 8082
+
+logging:
+  level:
+    org.springframework.security: TRACE

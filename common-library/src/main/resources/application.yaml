@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: common-library
+
+  cache:
+    type: redis
+
+  data:
+    redis:
+      host: localhost
+      port: 6379

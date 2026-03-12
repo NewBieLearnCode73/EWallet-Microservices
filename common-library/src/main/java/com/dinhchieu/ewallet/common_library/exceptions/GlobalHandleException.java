@@ -5,6 +5,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -25,6 +26,19 @@ public class GlobalHandleException {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
     ErrorCode errorCode = ErrorCode.UNCATEGORIZED_EXCEPTION;
+    ErrorResponse errorResponse = ErrorResponse.builder()
+        .code(errorCode.getCode())
+        .message(errorCode.getMessage())
+        .path(request.getRequestURI())
+        .build();
+
+    return ResponseEntity.status(errorCode.getStatusCode()).body(errorResponse);
+  }
+
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(NoHandlerFoundException ex,
+      HttpServletRequest request) {
+    ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
     ErrorResponse errorResponse = ErrorResponse.builder()
         .code(errorCode.getCode())
         .message(errorCode.getMessage())

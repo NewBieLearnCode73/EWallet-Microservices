@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    api 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     api 'org.springframework.boot:spring-boot-starter-web'
     api 'org.springframework.boot:spring-boot-starter-validation'
     api 'com.fasterxml.jackson.core:jackson-databind'

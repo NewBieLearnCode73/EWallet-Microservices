@@ -6,24 +6,22 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.WebUtils;
 
+import com.dinhchieu.ewallet.auth_service.clients.KeyCloakClient;
+import com.dinhchieu.ewallet.auth_service.models.dtos.request.KeyCloakLoginRequestDto;
+import com.dinhchieu.ewallet.auth_service.models.dtos.request.KeyCloakLogoutRequestDto;
+import com.dinhchieu.ewallet.auth_service.models.dtos.request.KeyCloakRefreshTokenRequestDto;
 import com.dinhchieu.ewallet.auth_service.services.AuthService;
 import com.dinhchieu.ewallet.common_library.exceptions.AppException;
 import com.dinhchieu.ewallet.common_library.exceptions.ErrorCode;
 import com.dinhchieu.ewallet.common_library.security.services.TokenBlacklistService;
 import com.dinhchieu.ewallet.common_library.utils.CookieUtils;
 
+import feign.FeignException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,9 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthServiceImpl implements AuthService {
 
   private final Keycloak keycloak;
-  private final RestTemplate restTemplate;
   private final TokenBlacklistService blacklistService;
   private final JwtDecoder jwtDecoder;
+  private final KeyCloakClient keyCloakClient;
 
   @Value("${keycloak.admin-client.realm}")
   private String keycloakRealm;
@@ -72,15 +70,17 @@ public class AuthServiceImpl implements AuthService {
     user.setCredentials(java.util.Collections.singletonList(credential));
 
     try (Response response = keycloak.realm(keycloakRealm).users().create(user)) {
-      if (response.getStatus() != 201) {
-        log.error("Failed to register user: HTTP {}", response.getStatus());
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-      }
-
       if (response.getStatus() == 409) {
         log.warn("Email already exists: {}", email);
         throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
       }
+
+      if (response.getStatus() != 201) {
+        log.error("Failed to register user: HTTP {}", response.getStatus());
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+      }
+    } catch (AppException e) {
+      throw e;
     } catch (Exception e) {
       log.error("Exception during user registration: {}", e.getMessage());
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
@@ -92,15 +92,16 @@ public class AuthServiceImpl implements AuthService {
   public void login(String username, String password, HttpServletResponse httpServletResponse) {
 
     try {
+      KeyCloakLoginRequestDto params = KeyCloakLoginRequestDto.builder()
+          .client_id(keycloakClientId)
+          .client_secret(keycloakClientSecret)
+          .username(username)
+          .password(password)
+          .build();
 
-      MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-      formData.add("grant_type", "password");
-      formData.add("client_id", keycloakClientId);
-      formData.add("client_secret", keycloakClientSecret);
-      formData.add("username", username);
-      formData.add("password", password);
-
-      Map<String, Object> keycloakResponse = callKeyMapcloakEndpoint("/token", formData);
+      Map<String, Object> keycloakResponse = keyCloakClient.login(
+          keycloakRealm,
+          params);
 
       if (keycloakResponse != null) {
         String accessToken = (String) keycloakResponse.get("access_token");
@@ -114,9 +115,15 @@ public class AuthServiceImpl implements AuthService {
         httpServletResponse.addCookie(refreshTokenCookie);
       }
 
-    } catch (HttpClientErrorException e) {
-      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    } catch (FeignException e) {
+      if (e.status() >= 400 && e.status() < 500) {
+        log.warn("Keycloak login từ chối (HTTP {}): {}", e.status(), username);
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
+      }
+      log.error("Keycloak login lỗi server (HTTP {}): {}", e.status(), e.getMessage());
+      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
     } catch (Exception e) {
+      log.error("Lỗi không xác định khi login: {}", e.getMessage());
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }
   }
@@ -142,16 +149,16 @@ public class AuthServiceImpl implements AuthService {
     }
 
     try {
+      KeyCloakLogoutRequestDto params = KeyCloakLogoutRequestDto.builder()
+          .client_id(keycloakClientId)
+          .client_secret(keycloakClientSecret)
+          .refresh_token(refreshTokenCookie.getValue())
+          .build();
 
-      MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-      formData.add("client_id", keycloakClientId);
-      formData.add("client_secret", keycloakClientSecret);
-      formData.add("refresh_token", refreshTokenCookie.getValue());
+      keyCloakClient.logout(keycloakRealm, params);
 
-      callKeyMapcloakEndpoint("/logout", formData);
-
-    } catch (HttpClientErrorException e) {
-      log.error("Lỗi từ Keycloak khi logout (Token có thể đã chết): {}", e.getStatusCode());
+    } catch (FeignException e) {
+      log.error("Lỗi từ Keycloak khi logout (Token có thể đã chết): HTTP {}", e.status());
     } catch (Exception e) {
       log.error("Lỗi không xác định khi gọi Keycloak: {}", e.getMessage());
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
@@ -172,13 +179,15 @@ public class AuthServiceImpl implements AuthService {
 
     try {
 
-      MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-      formData.add("grant_type", "refresh_token");
-      formData.add("client_id", keycloakClientId);
-      formData.add("client_secret", keycloakClientSecret);
-      formData.add("refresh_token", refreshToken);
+      KeyCloakRefreshTokenRequestDto params = KeyCloakRefreshTokenRequestDto.builder()
+          .client_id(keycloakClientId)
+          .client_secret(keycloakClientSecret)
+          .refresh_token(refreshToken)
+          .build();
 
-      Map<String, Object> keycloakResponse = callKeyMapcloakEndpoint("/token", formData);
+      Map<String, Object> keycloakResponse = keyCloakClient.refreshToken(
+          keycloakRealm,
+          params);
 
       if (keycloakResponse != null) {
         String newAccessToken = (String) keycloakResponse.get("access_token");
@@ -193,9 +202,13 @@ public class AuthServiceImpl implements AuthService {
         response.addCookie(refreshTokenCookie);
       }
 
-    } catch (HttpClientErrorException e) {
-      log.error("Lỗi từ Keycloak khi refresh token: {}", e.getStatusCode());
-      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    } catch (FeignException e) {
+      if (e.status() >= 400 && e.status() < 500) {
+        log.warn("Keycloak refresh token từ chối (HTTP {})", e.status());
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
+      }
+      log.error("Lỗi từ Keycloak khi refresh token: HTTP {}", e.status());
+      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
     } catch (Exception e) {
       log.error("Lỗi không xác định khi gọi Keycloak: {}", e.getMessage());
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
@@ -224,16 +237,6 @@ public class AuthServiceImpl implements AuthService {
       log.error("Lỗi khi thu hồi tất cả phiên: {}", e.getMessage());
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }
-  }
-
-  private Map<String, Object> callKeyMapcloakEndpoint(String tailUrl, MultiValueMap<String, String> formData) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-    String url = keycloakServerUrl + "/realms/" + keycloakRealm + "/protocol/openid-connect" + tailUrl;
-
-    HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
-    return restTemplate.postForObject(url, request, Map.class);
   }
 
 }

@@ -2,6 +2,10 @@ spring:
   application:
     name: auth-service
 
+  output:
+    ansi:
+      enabled: ALWAYS # Luôn in màu trên console
+
   security:
     oauth2:
       resourceserver:

@@ -8,12 +8,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalHandleException {
   @ExceptionHandler(AppException.class)
   public ResponseEntity<ErrorResponse> handleAppException(AppException ex, HttpServletRequest request) {
     ErrorCode errorCode = ex.getErrorCode();
+    log.error("AppException: {} - {}", errorCode.getCode(), errorCode.getMessage());
     ErrorResponse errorResponse = ErrorResponse.builder()
         .code(errorCode.getCode())
         .message(errorCode.getMessage())
@@ -26,6 +29,7 @@ public class GlobalHandleException {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
     ErrorCode errorCode = ErrorCode.UNCATEGORIZED_EXCEPTION;
+    log.error("Unexpected exception: {}", ex.getMessage(), ex);
     ErrorResponse errorResponse = ErrorResponse.builder()
         .code(errorCode.getCode())
         .message(errorCode.getMessage())
@@ -54,6 +58,7 @@ public class GlobalHandleException {
 
     String specificMessage = ex.getBindingResult().getFieldError().getDefaultMessage();
     ErrorCode errorCode = ErrorCode.INVALID_INPUT;
+    log.warn("Validation error: {}", specificMessage);
     ErrorResponse errorResponse = ErrorResponse.builder()
         .code(errorCode.getCode())
         .message(specificMessage != null ? specificMessage : errorCode.getMessage())

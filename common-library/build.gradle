@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'com.github.davidmc24.gradle.plugin.avro'
 }
 
 dependencies {
@@ -10,5 +11,22 @@ dependencies {
     api 'org.springframework.boot:spring-boot-starter-security'
     api 'org.springframework.security:spring-security-oauth2-resource-server'
     api 'org.springframework.security:spring-security-oauth2-jose'
+
+
+    // Avro dependencies
+    api 'io.confluent:kafka-avro-serializer:8.1.1'
+    api 'io.confluent:kafka-schema-registry-client:8.1.1'
+    api 'org.apache.avro:avro:1.12.1'
 }
 
+generateAvroJava  {
+    source("src/main/resources/avro")
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += ["build/generated-main-avro-java"]
+        }
+    }
+}

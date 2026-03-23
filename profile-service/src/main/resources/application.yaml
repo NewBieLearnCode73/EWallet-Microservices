@@ -2,6 +2,10 @@ spring:
   application:
     name: profile-service
 
+  output:
+    ansi:
+      enabled: ALWAYS # Luôn in màu trên console
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

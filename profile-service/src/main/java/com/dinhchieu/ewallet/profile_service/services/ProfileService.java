@@ -1,8 +1,12 @@
 package com.dinhchieu.ewallet.profile_service.services;
 
+import java.util.List;
+
 import com.dinhchieu.ewallet.common_library.enums.ProfileStatus;
+import com.dinhchieu.ewallet.profile_service.models.dtos.request.LinkedBankAccountLinkingRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreationRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
 
 public interface ProfileService {
@@ -51,4 +55,20 @@ public interface ProfileService {
    * @param status the new status to set
    */
   public void updateProfileStatus(String userId, ProfileStatus status);
+
+  /**
+   * Link a bank account to the profile of the currently authenticated user.
+   * 
+   * @param request the request containing bank account information
+   */
+  public void linkBankAccount(LinkedBankAccountLinkingRequestDto request);
+
+  /**
+   * Get the list of bank accounts linked to the profile of the currently
+   * authenticated user.
+   * 
+   * @return List of LinkedBankAccountsReponseDto representing the linked bank
+   *         accounts
+   */
+  public List<LinkedBankAccountsReponseDto> getMyLinkedBankAccounts();
 }

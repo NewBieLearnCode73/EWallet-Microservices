@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "BankCommand",
+  "namespace": "com.dinhchieu.ewallet.avro",
+  "fields": [
+    { "name": "sagaId", "type": "string" },
+    { "name": "bankCode", "type": "string" },
+    {
+      "name": "action",
+      "type": {
+        "type": "enum",
+        "name": "BankAction",
+        "symbols": ["WITHDRAW", "DEPOSIT"]
+      }
+    },
+    { "name": "amount", "type": "double" },
+    { "name": "accountNumber", "type": "string" },
+    { "name": "isCompensation", "type": "boolean", "default": false }
+  ]
+}

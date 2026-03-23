@@ -69,6 +69,8 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
 
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+        log.info("Authentication principle : {}", authentication.getPrincipal());
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
       } catch (Exception e) {

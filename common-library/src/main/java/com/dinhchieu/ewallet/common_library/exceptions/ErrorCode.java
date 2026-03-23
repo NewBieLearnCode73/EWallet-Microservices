@@ -29,9 +29,18 @@ public enum ErrorCode {
   PROFILE_ALREADY_EXISTS(3003, "Hồ sơ người dùng đã tồn tại.", HttpStatus.BAD_REQUEST),
   USER_PROFILE_NOT_FOUND(3004, "Không tìm thấy hồ sơ người dùng.", HttpStatus.NOT_FOUND),
   INVALID_STATUS_TRANSITION(3005, "Không thể thực hiện thay đổi trạng thái hồ sơ.", HttpStatus.BAD_REQUEST),
+  USER_WALLET_NOT_FOUND(3006, "Không tìm thấy ví của người dùng.", HttpStatus.NOT_FOUND),
+  USER_WALLET_ALREADY_EXISTS(3007, "Ví của người dùng đã tồn tại.", HttpStatus.BAD_REQUEST),
+  USER_WALLET_ALREADY_ACTIVE(3008, "Ví của người dùng đã được kích hoạt.", HttpStatus.BAD_REQUEST),
+  INVALID_WALLET_TRANSITION(3009, "Không thể thực hiện thay đổi trạng thái ví.", HttpStatus.BAD_REQUEST),
+  BANK_ACCOUNT_ALREADY_LINKED(3010, "Tài khoản ngân hàng đã được liên kết với hồ sơ khác.", HttpStatus.BAD_REQUEST),
+  BANK_ACCOUNT_NOT_FOUND(3011, "Không tìm thấy tài khoản ngân hàng liên kết.", HttpStatus.NOT_FOUND),
+  INSUFFICIENT_BALANCE(3012, "Số dư trong ví không đủ để thực hiện giao dịch.", HttpStatus.BAD_REQUEST),
 
   // -- 5. COMPLIACE & LEGAL (40xx) --//
-  MINOR_NOT_ALLOWED(4001, "Người dùng chưa đủ tuổi để sử dụng dịch vụ.", HttpStatus.FORBIDDEN);
+  MINOR_NOT_ALLOWED(4001, "Người dùng chưa đủ tuổi để sử dụng dịch vụ.", HttpStatus.FORBIDDEN),
+  BANK_CODE_SYSTEM_ERROR(4002, "Lỗi hệ thống ngân hàng!", HttpStatus.INTERNAL_SERVER_ERROR),
+  BANK_CODE_NOT_SUPPORTED(4003, "Mã ngân hàng không được hỗ trợ.", HttpStatus.BAD_REQUEST);
 
   private final int code;
   private final String message;

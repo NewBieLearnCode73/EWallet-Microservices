@@ -2,6 +2,14 @@ spring:
   application:
     name: eureka_server
 
+  output:
+    ansi:
+      enabled: ALWAYS # Luôn in màu trên console
+
+  threads:
+    virtual:
+      enabled: true
+
 eureka:
   client:
     register-with-eureka: false

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dinhchieu.ewallet.common_library.dtos.BaseResponse;
+import com.dinhchieu.ewallet.profile_service.models.dtos.request.LinkedBankAccountLinkingRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreationRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileStatusUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
@@ -64,6 +65,25 @@ public class ProfileController {
         .build());
   }
 
+  @GetMapping("/me/linked-bank-accounts")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> getMyLinkedBankAccounts() {
+    return ResponseEntity.ok(BaseResponse.builder()
+        .message("Lấy danh sách các tài khoản ngân hàng liên kết thành công")
+        .data(profileService.getMyLinkedBankAccounts())
+        .build());
+  }
+
+  @PostMapping("/me/linked-bank-accounts")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> linkBankAccount(
+      @Valid @RequestBody LinkedBankAccountLinkingRequestDto request) {
+    profileService.linkBankAccount(request);
+    return ResponseEntity.ok(BaseResponse.builder()
+        .message("Liên kết tài khoản ngân hàng thành công")
+        .build());
+  }
+
   @GetMapping("/{userId}")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<BaseResponse<Object>> getProfileByUserId(@PathVariable String userId) {
@@ -83,4 +103,5 @@ public class ProfileController {
         .message("Cập nhật trạng thái hồ sơ thành công")
         .build());
   }
+
 }

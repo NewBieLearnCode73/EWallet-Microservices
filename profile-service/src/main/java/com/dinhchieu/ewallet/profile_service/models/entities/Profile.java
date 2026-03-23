@@ -1,15 +1,18 @@
 package com.dinhchieu.ewallet.profile_service.models.entities;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import com.dinhchieu.ewallet.common_library.enums.ProfileStatus;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,4 +46,7 @@ public class Profile {
   @Enumerated(EnumType.STRING)
   @Builder.Default
   private ProfileStatus status = ProfileStatus.INACTIVE;
+
+  @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
+  private List<LinkedBankAccount> linkedBankAccounts;
 }

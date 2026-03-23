@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "WalletCommand",
+  "namespace": "com.dinhchieu.ewallet.avro",
+  "fields": [
+    { "name": "sagaId", "type": "string" },
+    { "name": "userId", "type": "string" },
+    {
+      "name": "action",
+      "type": {
+        "type": "enum",
+        "name": "WalletAction",
+        "symbols": ["CREDIT", "DEBIT"]
+      }
+    },
+    { "name": "amount", "type": "double" },
+    { "name": "transactionType", "type": "string" },
+
+    { "name": "destinationWalletId", "type": ["null", "string"], "default": null },
+    { "name": "isCompensation", "type": "boolean", "default": false }
+  ]
+}

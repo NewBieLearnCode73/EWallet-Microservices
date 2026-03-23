@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "TransactionEvent",
+  "namespace": "com.dinhchieu.ewallet.avro",
+  "fields": [
+    { "name": "sagaId", "type": "string" },
+    { "name": "serviceName", "type": "string" },
+    { "name": "status", "type": "string" },
+    { "name": "errorCode", "type": ["null", "int"], "default": null },
+    { "name": "errorMessage", "type": ["null", "string"], "default": null },
+    { "name": "referenceId", "type": ["null", "string"], "default": null }
+  ]
+}

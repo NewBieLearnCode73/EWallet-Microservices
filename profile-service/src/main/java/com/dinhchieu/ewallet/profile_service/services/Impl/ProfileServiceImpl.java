@@ -1,19 +1,26 @@
 package com.dinhchieu.ewallet.profile_service.services.Impl;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.dinhchieu.ewallet.common_library.enums.ProfileStatus;
 import com.dinhchieu.ewallet.common_library.exceptions.AppException;
 import com.dinhchieu.ewallet.common_library.exceptions.ErrorCode;
 import com.dinhchieu.ewallet.common_library.utils.SecurityUtils;
+import com.dinhchieu.ewallet.profile_service.models.dtos.request.LinkedBankAccountLinkingRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreationRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
+import com.dinhchieu.ewallet.profile_service.models.entities.LinkedBankAccount;
 import com.dinhchieu.ewallet.profile_service.models.entities.Profile;
+import com.dinhchieu.ewallet.profile_service.models.mappers.LinkedBankAccountMapper;
 import com.dinhchieu.ewallet.profile_service.models.mappers.ProfileMapper;
+import com.dinhchieu.ewallet.profile_service.repositories.LinkedBankAccountRepository;
 import com.dinhchieu.ewallet.profile_service.repositories.ProfileRepository;
 import com.dinhchieu.ewallet.profile_service.services.ProfileService;
 
@@ -26,7 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ProfileServiceImpl implements ProfileService {
 
   private final ProfileRepository profileRepository;
+  private final LinkedBankAccountRepository linkedBankAccountRepository;
   private final ProfileMapper profileMapper;
+  private final LinkedBankAccountMapper linkedBankAccountMapper;
 
   @Override
   public ProfileResponseDto getProfile() {
@@ -141,4 +150,36 @@ public class ProfileServiceImpl implements ProfileService {
     log.info("Admin updated profile status to {} for user ID: {}", status, userId);
   }
 
+  @Override
+  @Transactional
+  public void linkBankAccount(LinkedBankAccountLinkingRequestDto request) {
+    UUID userId = SecurityUtils.getAuthenticatedUserId();
+
+    Profile profile = profileRepository.findById(userId)
+        .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_EXIST));
+
+    if (linkedBankAccountRepository.existsByBankCodeAndAccountNumber(
+        request.getBankCode(), request.getAccountNumber())) {
+      throw new AppException(ErrorCode.BANK_ACCOUNT_ALREADY_LINKED);
+    }
+
+    LinkedBankAccount linkedBankAccount = LinkedBankAccount.builder()
+        .bankCode(request.getBankCode())
+        .accountNumber(request.getAccountNumber())
+        .profile(profile)
+        .build();
+
+    linkedBankAccountRepository.save(linkedBankAccount);
+    log.info("Linked bank account {} for user {}", request.getAccountNumber(), userId);
+  }
+
+  @Override
+  public List<LinkedBankAccountsReponseDto> getMyLinkedBankAccounts() {
+    UUID userId = SecurityUtils.getAuthenticatedUserId();
+
+    Profile profile = profileRepository.findById(userId)
+        .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_EXIST));
+
+    return linkedBankAccountMapper.toLinkedBankAccountsResponse(profile.getLinkedBankAccounts());
+  }
 }

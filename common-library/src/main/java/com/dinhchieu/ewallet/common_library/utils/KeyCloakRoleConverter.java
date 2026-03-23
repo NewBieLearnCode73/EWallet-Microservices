@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class KeyCloakRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
 
+  @SuppressWarnings("unchecked")
   @Override
   public Collection<GrantedAuthority> convert(Jwt jwt) {
     Collection<String> roles = (Collection<String>) ((Map<String, Object>) jwt.getClaims()

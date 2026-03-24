@@ -45,12 +45,17 @@ public interface WalletService {
         /**
          * Activate a wallet for a user.
          * 
+         * 
+         * @return void
          */
         void activeWallet();
 
         /**
+         * Get the current balance of the wallet.
          * 
-        */
+         * @return a WalletBalanceResponse object containing the current balance of the
+         *         wallet
+         */
         WalletBalanceResponseDto getBalance();
 
         /**

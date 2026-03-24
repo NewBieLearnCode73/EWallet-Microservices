@@ -1,6 +1,5 @@
 package com.dinhchieu.ewallet.bank_adapter_service.services;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.dinhchieu.ewallet.bank_adapter_service.dtos.response.BankResult;
 import com.dinhchieu.ewallet.bank_adapter_service.enums.BankCodeError;
-import com.dinhchieu.ewallet.bank_adapter_service.enums.BankStatus;
+import com.dinhchieu.ewallet.bank_adapter_service.utils.BankResultUtils;
 
 @Service
 public class BankServiceRouter {
@@ -39,12 +38,7 @@ public class BankServiceRouter {
   public BankResult processDeposit(String sagaId, String bankCode, double amount, String accountNumber) {
     BankStrategy strategy = bankServiceMap.get(bankCode);
     if (strategy == null) {
-      return BankResult.builder()
-          .status(BankStatus.FAILURE.name())
-          .errorCode(BankCodeError.BANK_CODE_NOT_SUPPORTED.getCode())
-          .errorMessage(BankCodeError.BANK_CODE_NOT_SUPPORTED.getMessage())
-          .timestamp(LocalDateTime.now())
-          .build();
+      return BankResultUtils.createFailureResult(BankCodeError.BANK_CODE_NOT_SUPPORTED);
     }
     return strategy.processDeposit(sagaId, amount, accountNumber);
   }
@@ -66,12 +60,7 @@ public class BankServiceRouter {
   public BankResult processWithdrawal(String sagaId, String bankCode, double amount, String accountNumber) {
     BankStrategy strategy = bankServiceMap.get(bankCode);
     if (strategy == null) {
-      return BankResult.builder()
-          .status(BankStatus.FAILURE.name())
-          .errorCode(BankCodeError.BANK_CODE_NOT_SUPPORTED.getCode())
-          .errorMessage(BankCodeError.BANK_CODE_NOT_SUPPORTED.getMessage())
-          .timestamp(LocalDateTime.now())
-          .build();
+      return BankResultUtils.createFailureResult(BankCodeError.BANK_CODE_NOT_SUPPORTED);
     }
     return strategy.processWithdrawal(sagaId, amount, accountNumber);
   }

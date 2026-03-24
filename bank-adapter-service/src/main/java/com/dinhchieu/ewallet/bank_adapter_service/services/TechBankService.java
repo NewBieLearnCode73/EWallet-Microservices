@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.dinhchieu.ewallet.bank_adapter_service.dtos.response.BankResult;
 import com.dinhchieu.ewallet.bank_adapter_service.enums.BankCodeError;
 import com.dinhchieu.ewallet.bank_adapter_service.enums.BankStatus;
+import com.dinhchieu.ewallet.bank_adapter_service.utils.BankResultUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,12 +30,7 @@ public class TechBankService implements BankStrategy {
       return BankResult.builder().status(BankStatus.SUCCESS.name()).transactionRefId(tcbRef)
           .timestamp(LocalDateTime.now()).build();
     }
-    return BankResult.builder()
-        .status(BankStatus.FAILURE.name())
-        .errorCode(BankCodeError.BANK_CODE_SYSTEM_ERROR.getCode())
-        .errorMessage(BankCodeError.BANK_CODE_SYSTEM_ERROR.getMessage())
-        .timestamp(LocalDateTime.now())
-        .build();
+    return BankResultUtils.createFailureResult(BankCodeError.BANK_CODE_SYSTEM_ERROR);
   }
 
   @Override
@@ -48,12 +44,7 @@ public class TechBankService implements BankStrategy {
           .timestamp(LocalDateTime.now()).build();
     }
 
-    return BankResult.builder()
-        .status(BankStatus.FAILURE.name())
-        .errorCode(BankCodeError.BANK_CODE_SYSTEM_ERROR.getCode())
-        .errorMessage(BankCodeError.BANK_CODE_SYSTEM_ERROR.getMessage())
-        .timestamp(LocalDateTime.now())
-        .build();
+    return BankResultUtils.createFailureResult(BankCodeError.BANK_CODE_SYSTEM_ERROR);
   }
 
 }

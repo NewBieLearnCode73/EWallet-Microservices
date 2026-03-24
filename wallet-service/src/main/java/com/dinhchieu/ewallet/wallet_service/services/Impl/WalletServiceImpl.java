@@ -16,7 +16,6 @@ import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletResultDto;
 import com.dinhchieu.ewallet.wallet_service.enums.CurrencyType;
 import com.dinhchieu.ewallet.wallet_service.enums.TransactionStatus;
 import com.dinhchieu.ewallet.wallet_service.enums.TransactionType;
-import com.dinhchieu.ewallet.wallet_service.enums.WalletErrorCode;
 import com.dinhchieu.ewallet.wallet_service.enums.WalletStatus;
 import com.dinhchieu.ewallet.wallet_service.enums.WalletTransactionStatus;
 import com.dinhchieu.ewallet.wallet_service.models.entities.Wallet;
@@ -53,12 +52,8 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = walletRepository.findById(walletUuid).orElse(null);
         if (wallet == null) {
             log.warn("Wallet not found: {}", walletId);
-            return WalletResultDto.builder()
-                    .status(WalletTransactionStatus.FAILURE.name())
-                    .errorCode(WalletErrorCode.WALLET_NOT_FOUND.getCode())
-                    .errorMessage(WalletErrorCode.WALLET_NOT_FOUND.getMessage())
-                    .timestamp(LocalDateTime.now())
-                    .build();
+
+            return createFailureResult(ErrorCode.USER_WALLET_NOT_FOUND);
         }
 
         wallet.setBalance(wallet.getBalance().add(bdAmount));
@@ -96,41 +91,35 @@ public class WalletServiceImpl implements WalletService {
         UUID sagaUuid = UUID.fromString(sagaId);
         UUID walletUuid = UUID.fromString(walletId);
 
-        UUID destUuid = Optional.ofNullable(destinationWalletId).map(UUID::fromString).orElse(null);
+        UUID destUuid = (destinationWalletId != null && !destinationWalletId.trim().isEmpty())
+                ? UUID.fromString(destinationWalletId)
+                : null;
 
         Optional<Wallet> walletOpt = walletRepository.findById(walletUuid);
         if (walletOpt.isEmpty()) {
             log.warn("Wallet not found: {}", walletId);
-            return WalletResultDto.builder()
-                    .status(WalletTransactionStatus.FAILURE.name())
-                    .errorCode(WalletErrorCode.WALLET_NOT_FOUND.getCode())
-                    .errorMessage(WalletErrorCode.WALLET_NOT_FOUND.getMessage())
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            return createFailureResult(ErrorCode.USER_WALLET_NOT_FOUND);
         }
-
         Wallet wallet = walletOpt.get();
 
         if (wallet.getBalance().compareTo(bdAmount) < 0) {
             log.warn("Insufficient funds. Wallet: {}, Required: {}, Available: {}",
                     walletId, amount, wallet.getBalance());
-            return WalletResultDto.builder()
-                    .status(WalletTransactionStatus.FAILURE.name())
-                    .errorCode(WalletErrorCode.INSUFFICIENT_FUNDS.getCode())
-                    .errorMessage(WalletErrorCode.INSUFFICIENT_FUNDS.getMessage())
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            return createFailureResult(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        Wallet destWallet = null;
+        if (destUuid != null) {
+            Optional<Wallet> destWalletOpt = walletRepository.findById(destUuid);
+            if (destWalletOpt.isEmpty()) {
+                log.warn("Destination wallet not found: {}", destinationWalletId);
+                return createFailureResult(ErrorCode.USER_WALLET_NOT_FOUND);
+            }
+            destWallet = destWalletOpt.get();
         }
 
         wallet.setBalance(wallet.getBalance().subtract(bdAmount));
-
-        if (destUuid != null) {
-            walletRepository.findById(destUuid).ifPresent(destWallet -> {
-                destWallet.setBalance(destWallet.getBalance().add(bdAmount));
-            });
-        }
-
-        WalletTransaction transaction = WalletTransaction.builder()
+        WalletTransaction transactionSourceWallet = WalletTransaction.builder()
                 .wallet(wallet)
                 .amount(bdAmount.negate())
                 .transactionType(transactionType)
@@ -139,74 +128,29 @@ public class WalletServiceImpl implements WalletService {
                 .destinationWalletId(destUuid)
                 .build();
 
-        WalletTransaction savedTx = walletTransactionRepository.save(transaction);
+        WalletTransaction savedTx = walletTransactionRepository.save(transactionSourceWallet);
         wallet.getTransactions().add(savedTx);
+
+        if (destWallet != null) {
+            destWallet.setBalance(destWallet.getBalance().add(bdAmount));
+            WalletTransaction transactionDestWallet = WalletTransaction.builder()
+                    .wallet(destWallet)
+                    .amount(bdAmount)
+                    .transactionType(transactionType)
+                    .status(TransactionStatus.COMPLETED)
+                    .sagaId(sagaUuid)
+                    .destinationWalletId(walletUuid)
+                    .build();
+
+            WalletTransaction savedDestTx = walletTransactionRepository.save(transactionDestWallet);
+            destWallet.getTransactions().add(savedDestTx);
+        }
 
         return WalletResultDto.builder()
                 .status(WalletTransactionStatus.SUCCESS.name())
                 .transactionRefId(savedTx.getId().toString())
                 .timestamp(LocalDateTime.now())
                 .build();
-
-        // UUID walletUuid = UUID.fromString(walletId);
-        // UUID destUuid = destinationWalletId != null ?
-        // UUID.fromString(destinationWalletId) : null;
-        // BigDecimal bdAmount = BigDecimal.valueOf(amount);
-
-        // Wallet wallet = walletRepository.findById(walletUuid).orElse(null);
-
-        // Wallet destWallet = destUuid != null ?
-        // walletRepository.findById(destUuid).orElse(null) : null;
-
-        // if (wallet == null) {
-        // log.warn("Wallet not found: {}", walletId);
-        // return WalletResultDto.builder()
-        // .status(WalletTransactionStatus.FAILURE.name())
-        // .errorCode(WalletErrorCode.WALLET_NOT_FOUND.getCode())
-        // .errorMessage(WalletErrorCode.WALLET_NOT_FOUND.getMessage())
-        // .timestamp(LocalDateTime.now())
-        // .build();
-        // }
-
-        // if (wallet.getBalance().compareTo(bdAmount) < 0) {
-        // log.warn("Insufficient funds. Wallet: {}, Required: {}, Available: {}",
-        // walletId, amount,
-        // wallet.getBalance());
-        // return WalletResultDto.builder()
-        // .status(WalletTransactionStatus.FAILURE.name())
-        // .errorCode(WalletErrorCode.INSUFFICIENT_FUNDS.getCode())
-        // .errorMessage(WalletErrorCode.INSUFFICIENT_FUNDS.getMessage())
-        // .timestamp(LocalDateTime.now())
-        // .build();
-        // }
-
-        // wallet.setBalance(wallet.getBalance().subtract(bdAmount)); // Trừ tiền từ ví
-        // if (destWallet != null) {
-        // destWallet.setBalance(destWallet.getBalance().add(bdAmount)); // Cộng tiền
-        // vào ví đích
-        // }
-
-        // WalletTransaction transaction = WalletTransaction.builder()
-        // .wallet(wallet)
-        // .amount(bdAmount.negate())
-        // .transactionType(transactionType)
-        // .status(TransactionStatus.COMPLETED)
-        // .sagaId(UUID.fromString(sagaId))
-        // .destinationWalletId(destUuid)
-        // .build();
-        // WalletTransaction savedTx = walletTransactionRepository.save(transaction);
-
-        // wallet.getTransactions().add(savedTx);
-        // walletRepository.save(wallet);
-        // if (destWallet != null) {
-        // walletRepository.save(destWallet);
-        // }
-
-        // return WalletResultDto.builder()
-        // .status(WalletTransactionStatus.SUCCESS.name())
-        // .transactionRefId(savedTx.getId().toString())
-        // .timestamp(LocalDateTime.now())
-        // .build();
     }
 
     @Override
@@ -267,6 +211,15 @@ public class WalletServiceImpl implements WalletService {
         boolean exist = walletRepository.existsById(userUuid);
         return WalletExistResponseDto.builder()
                 .exist(exist)
+                .build();
+    }
+
+    private WalletResultDto createFailureResult(ErrorCode errorCode) {
+        return WalletResultDto.builder()
+                .status(WalletTransactionStatus.FAILURE.name())
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage())
+                .timestamp(LocalDateTime.now())
                 .build();
     }
 }

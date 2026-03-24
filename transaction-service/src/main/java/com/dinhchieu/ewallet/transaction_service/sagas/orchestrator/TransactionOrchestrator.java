@@ -51,6 +51,8 @@ public class TransactionOrchestrator {
         handleDepositFlow(saga, event);
       } else if (saga.getType() == TransactionType.WITHDRAWAL) {
         handleWithdrawFlow(saga, event);
+      } else if (saga.getType() == TransactionType.TRANSFER) {
+        handleTransferFlow(saga, event);
       }
     } catch (Exception e) {
       log.error("Orchestrator failed to process event for SagaId: {}. Error: {}", event.getSagaId(), e.getMessage());
@@ -139,6 +141,21 @@ public class TransactionOrchestrator {
             .build();
         saveToOutbox("wallet-commands", event.getSagaId(), walletCommand);
         saga.setStatus(TransactionStatus.COMPENSATED);
+        transactionRepository.save(saga);
+      }
+    }
+  }
+
+  // Wallet -> Wallet : Chuyển tiền giữa 2 ví
+  private void handleTransferFlow(Transaction saga, TransactionEvent event) throws Exception {
+    String eventService = event.getServiceName();
+
+    if (eventService.equals(TransactionEventService.WALLET_SERVICE.name())) {
+      if (event.getStatus().equals(EventStatus.SUCCESS.name())) {
+        saga.setStatus(TransactionStatus.COMPLETED);
+        transactionRepository.save(saga);
+      } else {
+        saga.setStatus(TransactionStatus.FAILED);
         transactionRepository.save(saga);
       }
     }

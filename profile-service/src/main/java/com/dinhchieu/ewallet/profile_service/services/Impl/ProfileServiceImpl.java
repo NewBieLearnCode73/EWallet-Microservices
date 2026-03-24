@@ -15,6 +15,7 @@ import com.dinhchieu.ewallet.profile_service.models.dtos.request.LinkedBankAccou
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreationRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileExistResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.entities.LinkedBankAccount;
 import com.dinhchieu.ewallet.profile_service.models.entities.Profile;
@@ -181,5 +182,13 @@ public class ProfileServiceImpl implements ProfileService {
         .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_EXIST));
 
     return linkedBankAccountMapper.toLinkedBankAccountsResponse(profile.getLinkedBankAccounts());
+  }
+
+  @Override
+  public ProfileExistResponseDto isProfileExists(String userId) {
+    UUID userUuid = UUID.fromString(userId);
+    return ProfileExistResponseDto.builder()
+        .exist(profileRepository.existsById(userUuid))
+        .build();
   }
 }

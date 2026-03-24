@@ -9,7 +9,7 @@ import com.dinhchieu.ewallet.avro.TransactionEvent;
 import com.dinhchieu.ewallet.avro.WalletAction;
 import com.dinhchieu.ewallet.avro.WalletCommand;
 import com.dinhchieu.ewallet.common_library.enums.TransactionEventService;
-import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletResult;
+import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletResultDto;
 import com.dinhchieu.ewallet.wallet_service.enums.TransactionType;
 import com.dinhchieu.ewallet.wallet_service.sagas.outbox.OutboxMessage;
 import com.dinhchieu.ewallet.wallet_service.sagas.outbox.OutboxMessageRepository;
@@ -35,7 +35,7 @@ public class WalletKafkaListener {
 
     try {
       WalletCommand command = record.value();
-      WalletResult result;
+      WalletResultDto result;
       String destinationWalletId = command.getDestinationWalletId() != null ? command.getDestinationWalletId() : null;
 
       if (WalletAction.CREDIT == command.getAction()) {

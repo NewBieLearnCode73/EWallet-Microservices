@@ -7,6 +7,7 @@ import com.dinhchieu.ewallet.profile_service.models.dtos.request.LinkedBankAccou
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreationRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileExistResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
 
 public interface ProfileService {
@@ -48,6 +49,15 @@ public interface ProfileService {
   public void activateProfile();
 
   /**
+   * Check if a profile exists for the given user ID.
+   * 
+   * @param userId the ID of the user to check for profile existence
+   * 
+   * @return true if a profile exists for the given user ID, false otherwise
+   */
+  public ProfileExistResponseDto isProfileExists(String userId);
+
+  /**
    * Admin: update the status of any user's profile (ACTIVE, SUSPENDED,
    * LOCKED...).
    * 
@@ -71,4 +81,5 @@ public interface ProfileService {
    *         accounts
    */
   public List<LinkedBankAccountsReponseDto> getMyLinkedBankAccounts();
+
 }

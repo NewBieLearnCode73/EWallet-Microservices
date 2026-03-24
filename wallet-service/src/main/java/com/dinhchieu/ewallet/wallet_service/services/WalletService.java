@@ -1,7 +1,8 @@
 package com.dinhchieu.ewallet.wallet_service.services;
 
-import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletBalanceResponse;
-import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletResult;
+import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletBalanceResponseDto;
+import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletExistResponseDto;
+import com.dinhchieu.ewallet.wallet_service.dtos.response.WalletResultDto;
 import com.dinhchieu.ewallet.wallet_service.enums.TransactionType;
 
 public interface WalletService {
@@ -20,7 +21,7 @@ public interface WalletService {
          *         transaction, including status, error codes, and messages if
          *         applicable
          */
-        WalletResult processCredit(String sagaId, double amount, String walletId, TransactionType transactionType,
+        WalletResultDto processCredit(String sagaId, double amount, String walletId, TransactionType transactionType,
                         String destinationWalletId);
 
         /**
@@ -38,7 +39,7 @@ public interface WalletService {
          *         transaction, including status, error codes, and messages if
          *         applicable
          */
-        WalletResult processDebit(String sagaId, double amount, String walletId, TransactionType transactionType,
+        WalletResultDto processDebit(String sagaId, double amount, String walletId, TransactionType transactionType,
                         String destinationWalletId);
 
         /**
@@ -50,5 +51,16 @@ public interface WalletService {
         /**
          * 
         */
-        WalletBalanceResponse getBalance();
+        WalletBalanceResponseDto getBalance();
+
+        /**
+         * Check if a wallet exists for the given user ID.
+         * 
+         * @param userId the ID of the user to check for wallet existence
+         * 
+         * @return a WalletExistResponse object indicating whether a wallet exists for
+         *         the
+         * 
+         */
+        WalletExistResponseDto isWalletExist(String userId);
 }

@@ -18,6 +18,7 @@ import com.dinhchieu.ewallet.transaction_service.clients.WalletClient;
 import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.WalletBalanceResponseDto;
 import com.dinhchieu.ewallet.transaction_service.dtos.response.DepositFromBankResponse;
+import com.dinhchieu.ewallet.transaction_service.dtos.response.InternalTransferResponse;
 import com.dinhchieu.ewallet.transaction_service.dtos.response.WithdrawToBankResponse;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionStatus;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionType;
@@ -213,6 +214,80 @@ public class TransactionServiceImpl implements TransactionService {
         .payload(objectMapper.writeValueAsString(payload))
         .build();
     outboxMessageRepository.save(outboxMessage);
+  }
+
+  @Override
+  public InternalTransferResponse processInternalTransfer(double amount,
+      String destinationWalletId) {
+
+    try {
+      UUID sagaId = UUID.randomUUID();
+      UUID userId = SecurityUtils.getAuthenticatedUserId();
+
+      var walletBalanceResponse = walletClient.getBalance();
+
+      if (walletBalanceResponse == null || walletBalanceResponse.getBody() == null) {
+        log.error("Failed to fetch wallet balance from wallet service");
+        throw new AppException(ErrorCode.USER_WALLET_NOT_FOUND);
+      }
+
+      WalletBalanceResponseDto walletBalance = walletBalanceResponse.getBody().getData();
+
+      boolean hasSufficientBalance = walletBalance.getBalance().doubleValue() >= amount;
+
+      if (!hasSufficientBalance) {
+        log.warn("Insufficient balance - Current: {}, Required: {}", walletBalance.getBalance(), amount);
+        throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+      }
+
+      var destinationWalletExistResponse = walletClient.isWalletExists(destinationWalletId);
+
+      if (!destinationWalletExistResponse.getBody().getData().isExist()) {
+        log.error("Destination wallet does not exist");
+        throw new AppException(ErrorCode.DESTINATION_WALLET_NOT_FOUND);
+      }
+
+      WalletCommand debitCommand = WalletCommand
+          .newBuilder()
+          .setSagaId(sagaId.toString())
+          .setAmount(amount)
+          .setUserId(userId.toString())
+          .setTransactionType(TransactionWalletCommandType.TRANSFER.toString())
+          .setAction(WalletAction.DEBIT) // Trừ tiền ví nguồn trước
+          .setDestinationWalletId(destinationWalletId)
+          .build();
+
+      saveToOutbox("wallet-commands", sagaId.toString(), debitCommand);
+
+      Transaction transaction = Transaction.builder()
+          .id(sagaId.toString())
+          .amount(BigDecimal.valueOf(amount))
+          .type(TransactionType.TRANSFER)
+          .sourceWalletId(userId.toString())
+          .destinationWalletId(destinationWalletId)
+          .build();
+
+      transactionRepository.save(transaction);
+
+      log.info("Wallet debit command saved to outbox for saga ID: {}", sagaId);
+
+      return InternalTransferResponse.builder()
+          .transactionId(sagaId.toString())
+          .amount(amount)
+          .type(TransactionType.TRANSFER)
+          .sourceWalletId(userId.toString())
+          .destinationWalletId(destinationWalletId)
+          .status(TransactionStatus.PENDING)
+          .build();
+
+    } catch (AppException e) {
+      log.error("AppException in processInternalTransfer: {}", e.getMessage());
+      throw e;
+    } catch (Exception e) {
+      log.error("Unexpected error processing internal transfer: {}", e.getMessage(), e);
+      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+    }
+
   }
 
 }

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dinhchieu.ewallet.common_library.dtos.BaseResponse;
+import com.dinhchieu.ewallet.transaction_service.dtos.request.InternalTransferRequestDto;
 import com.dinhchieu.ewallet.transaction_service.dtos.request.TransactionDepositRequestDto;
 import com.dinhchieu.ewallet.transaction_service.dtos.request.TransactionWithdrawRequestDto;
 import com.dinhchieu.ewallet.transaction_service.service.TransactionService;
@@ -35,5 +36,12 @@ public class TransactionController {
     var result = transactionService.processWithdrawalFromBank(request.getAmount(), request.getBankCode(),
         request.getAccountNumber());
     return ResponseEntity.ok(BaseResponse.builder().message("Rút tiền thành công").data(result).build());
+  }
+
+  @PostMapping("/transfer")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> transfer(@Valid @RequestBody InternalTransferRequestDto request) {
+    var result = transactionService.processInternalTransfer(request.getAmount(), request.getDestinationWalletId());
+    return ResponseEntity.ok(BaseResponse.builder().message("Chuyển tiền thành công").data(result).build());
   }
 }

@@ -84,6 +84,15 @@ public class ProfileController {
         .build());
   }
 
+  @GetMapping("/exists/{userId}")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> isProfileExists(@PathVariable String userId) {
+    return ResponseEntity.ok(BaseResponse.builder()
+        .message("Kiểm tra tồn tại hồ sơ thành công")
+        .data(profileService.isProfileExists(userId))
+        .build());
+  }
+
   @GetMapping("/{userId}")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<BaseResponse<Object>> getProfileByUserId(@PathVariable String userId) {

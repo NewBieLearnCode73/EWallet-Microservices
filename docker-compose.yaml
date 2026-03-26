@@ -67,6 +67,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.4.4
     container_name: kafka
+    restart: always
     ports:
       - "9092:9092"
       - "19092:19092"
@@ -119,6 +120,7 @@ services:
   schema-registry-service:
     image: confluentinc/cp-schema-registry:7.4.4
     container_name: schema-registry-service
+    restart: always
     ports:
       - "7878:8081"
     environment:

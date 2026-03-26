@@ -44,8 +44,7 @@ subprojects {
         implementation 'org.springframework.boot:spring-boot-starter-cache'
         implementation 'org.springframework.boot:spring-boot-starter-data-redis'
         implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-	    implementation 'org.springframework.boot:spring-boot-starter-kafka'
-
+	    implementation 'org.springframework.boot:spring-boot-starter-kafka'  
         
         annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
         annotationProcessor 'org.projectlombok:lombok'
@@ -53,6 +52,7 @@ subprojects {
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
         testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
+        testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 

@@ -2,44 +2,5 @@ spring:
   application:
     name: profile-service
 
-  output:
-    ansi:
-      enabled: ALWAYS # Luôn in màu trên console
-
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/profile_db
-    username: admin
-    password: admin
-    driver-class-name: org.postgresql.Driver
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:9999/realms/ewallet-realm
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    initial-instance-info-replication-interval-seconds: 5
-    registry-fetch-interval-seconds: 5
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    lease-expiration-duration-in-seconds: 5
-    lease-renewal-interval-in-seconds: 5
-    prefer-ip-address: true
-
-server:
-  port: 8082
-
-logging:
-  level:
-    org.springframework.security: TRACE
+  config:
+    import: optional:configserver:http://localhost:8989

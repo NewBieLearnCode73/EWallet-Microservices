@@ -1,0 +1,8 @@
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+
+spring:
+  output:
+    ansi:
+      enabled: ALWAYS # Luôn in màu trên console

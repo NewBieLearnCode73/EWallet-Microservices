@@ -1,26 +1,6 @@
 spring:
   application:
-    name: eureka_server
+    name: eureka-server
 
-  output:
-    ansi:
-      enabled: ALWAYS # Luôn in màu trên console
-
-  threads:
-    virtual:
-      enabled: true
-
-eureka:
-  client:
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
-  server:
-    wait-time-in-ms-when-sync-empty: 0
-
-  instance:
-    hostname: localhost
-
-server:
-  port: 8761
+  config:
+    import: optional:configserver:http://localhost:8989

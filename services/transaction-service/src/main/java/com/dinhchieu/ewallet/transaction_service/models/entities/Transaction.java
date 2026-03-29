@@ -1,6 +1,7 @@
 package com.dinhchieu.ewallet.transaction_service.models.entities;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionStatus;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionType;
@@ -49,4 +50,8 @@ public class Transaction {
 
   @Column(name = "account_number")
   private String accountNumber; // Bank account number or wallet ID
+
+  @Column(name = "created_at")
+  @Builder.Default
+  private LocalDateTime createdAt = LocalDateTime.now();
 }

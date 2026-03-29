@@ -134,6 +134,22 @@ services:
         limits:
           memory: 512M
 
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    command: mongod --wiredTigerCacheSizeGB 0.25 # Giới hạn bộ nhớ cache của MongoDB để giảm sử dụng RAM
+    ports:
+      - "27017:27017"
+    restart: always
+    networks:
+      - app-network
+    volumes:
+      - mongodb_data:/data/db
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 volumes:
   postgres_data:
     external: true
@@ -144,6 +160,8 @@ volumes:
   volume_kafka_data:
     external: true
     name: ewallet-microservices_volume_kafka_data
+  mongodb_data:
+    name: ewallet-microservices_volume_mongodb_data
 
 networks:
   app-network:

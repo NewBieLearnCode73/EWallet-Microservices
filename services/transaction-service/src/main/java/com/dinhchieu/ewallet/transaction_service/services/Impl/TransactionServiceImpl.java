@@ -3,6 +3,10 @@ package com.dinhchieu.ewallet.transaction_service.services.Impl;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.springframework.stereotype.Service;
 
@@ -24,7 +28,7 @@ import com.dinhchieu.ewallet.transaction_service.models.dtos.response.DepositFro
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.InternalTransferResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.WithdrawToBankResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.entities.Transaction;
-import com.dinhchieu.ewallet.transaction_service.repositories.TransactionRepository;
+import com.dinhchieu.ewallet.transaction_service.repositories.jpa.TransactionRepository;
 import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessage;
 import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessageRepository;
 import com.dinhchieu.ewallet.transaction_service.services.TransactionService;
@@ -127,41 +131,61 @@ public class TransactionServiceImpl implements TransactionService {
       UUID sagaId = UUID.randomUUID();
       UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-      var linkedAccountsResponse = profileClient.getMyLinkedBankAccounts();
-      if (linkedAccountsResponse == null || linkedAccountsResponse.getBody() == null) {
-        log.error("Failed to fetch linked bank accounts from profile service");
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-      }
+      try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        CompletableFuture<?> linkedBankAccountsFuture = CompletableFuture.runAsync(() -> {
+          var linkedAccountsResponse = profileClient.getMyLinkedBankAccounts();
+          if (linkedAccountsResponse == null || linkedAccountsResponse.getBody() == null) {
+            log.error("Failed to fetch linked bank accounts from profile service");
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+          }
 
-      List<LinkedBankAccountsReponseDto> linkedBankAccounts = linkedAccountsResponse.getBody().getData();
+          List<LinkedBankAccountsReponseDto> linkedBankAccounts = linkedAccountsResponse.getBody().getData();
 
-      var walletBalanceResponse = walletClient.getBalance();
-      if (walletBalanceResponse == null || walletBalanceResponse.getBody() == null) {
-        log.error("Failed to fetch wallet balance from wallet service");
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-      }
+          if (linkedBankAccounts == null || linkedBankAccounts.isEmpty()) {
+            log.error("User has no linked bank accounts");
+            throw new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND);
+          }
 
-      WalletBalanceResponseDto walletBalance = walletBalanceResponse.getBody().getData();
+          boolean isLinked = linkedBankAccounts.stream()
+              .anyMatch(
+                  account -> account.getAccountNumber().equals(accountNumber)
+                      && account.getBankCode().equals(bankCode));
 
-      if (linkedBankAccounts == null || linkedBankAccounts.isEmpty()) {
-        log.error("User has no linked bank accounts");
-        throw new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND);
-      }
+          if (!isLinked) {
+            log.warn("Bank account not linked - BankCode: {}, AccountNumber: {}", bankCode, accountNumber);
+            throw new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND);
+          }
+        }, executor);
 
-      boolean isLinked = linkedBankAccounts.stream()
-          .anyMatch(
-              account -> account.getAccountNumber().equals(accountNumber) && account.getBankCode().equals(bankCode));
+        CompletableFuture<?> balanceFuture = CompletableFuture.runAsync(() -> {
+          var walletBalanceResponse = walletClient.getBalance();
 
-      if (!isLinked) {
-        log.warn("Bank account not linked - BankCode: {}, AccountNumber: {}", bankCode, accountNumber);
-        throw new AppException(ErrorCode.BANK_ACCOUNT_NOT_FOUND);
-      }
+          if (walletBalanceResponse == null || walletBalanceResponse.getBody() == null) {
+            log.error("Failed to fetch wallet balance from wallet service");
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+          }
 
-      boolean hasSufficientBalance = walletBalance.getBalance().doubleValue() >= amount;
+          WalletBalanceResponseDto walletBalance = walletBalanceResponse.getBody().getData();
 
-      if (!hasSufficientBalance) {
-        log.warn("Insufficient balance - Current: {}, Required: {}", walletBalance.getBalance(), amount);
-        throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+          boolean hasSufficientBalance = walletBalance.getBalance().doubleValue() >= amount;
+
+          if (!hasSufficientBalance) {
+            log.warn("Insufficient balance - Current: {}, Required: {}", walletBalance.getBalance(), amount);
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+          }
+        }, executor);
+
+        try {
+          CompletableFuture.allOf(linkedBankAccountsFuture, balanceFuture).get();
+        } catch (ExecutionException e) {
+          if (e.getCause() instanceof AppException appException) {
+            throw appException;
+          }
+          throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
       }
 
       WalletCommand withdrawWalletCommand = WalletCommand
@@ -207,15 +231,6 @@ public class TransactionServiceImpl implements TransactionService {
     }
   }
 
-  private void saveToOutbox(String topic, String sagaId, Object payload) throws Exception {
-    OutboxMessage outboxMessage = OutboxMessage.builder()
-        .topic(topic)
-        .sagaId(sagaId)
-        .payload(objectMapper.writeValueAsString(payload))
-        .build();
-    outboxMessageRepository.save(outboxMessage);
-  }
-
   @Override
   public InternalTransferResponseDto processInternalTransfer(double amount,
       String destinationWalletId) {
@@ -224,27 +239,47 @@ public class TransactionServiceImpl implements TransactionService {
       UUID sagaId = UUID.randomUUID();
       UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-      var walletBalanceResponse = walletClient.getBalance();
+      // Parallel calls to check balance and destination wallet existence
+      try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        CompletableFuture<?> balanceFuture = CompletableFuture.runAsync(() -> {
+          var walletBalanceResponse = walletClient.getBalance();
 
-      if (walletBalanceResponse == null || walletBalanceResponse.getBody() == null) {
-        log.error("Failed to fetch wallet balance from wallet service");
-        throw new AppException(ErrorCode.USER_WALLET_NOT_FOUND);
-      }
+          if (walletBalanceResponse == null || walletBalanceResponse.getBody() == null) {
+            log.error("Failed to fetch wallet balance from wallet service");
+            throw new AppException(ErrorCode.USER_WALLET_NOT_FOUND);
+          }
 
-      WalletBalanceResponseDto walletBalance = walletBalanceResponse.getBody().getData();
+          WalletBalanceResponseDto walletBalance = walletBalanceResponse.getBody().getData();
 
-      boolean hasSufficientBalance = walletBalance.getBalance().doubleValue() >= amount;
+          boolean hasSufficientBalance = walletBalance.getBalance().doubleValue() >= amount;
 
-      if (!hasSufficientBalance) {
-        log.warn("Insufficient balance - Current: {}, Required: {}", walletBalance.getBalance(), amount);
-        throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
-      }
+          if (!hasSufficientBalance) {
+            log.warn("Insufficient balance - Current: {}, Required: {}", walletBalance.getBalance(), amount);
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+          }
+        }, executor);
 
-      var destinationWalletExistResponse = walletClient.isWalletExists(destinationWalletId);
+        CompletableFuture<?> destinationWalletFuture = CompletableFuture.runAsync(() -> {
+          var destinationWalletExistResponse = walletClient.isWalletExists(destinationWalletId);
 
-      if (!destinationWalletExistResponse.getBody().getData().isExist()) {
-        log.error("Destination wallet does not exist");
-        throw new AppException(ErrorCode.DESTINATION_WALLET_NOT_FOUND);
+          if (destinationWalletExistResponse == null || destinationWalletExistResponse.getBody() == null
+              || !destinationWalletExistResponse.getBody().getData().isExist()) {
+            log.error("Destination wallet does not exist");
+            throw new AppException(ErrorCode.DESTINATION_WALLET_NOT_FOUND);
+          }
+        }, executor);
+
+        try {
+          CompletableFuture.allOf(balanceFuture, destinationWalletFuture).get();
+        } catch (ExecutionException e) {
+          if (e.getCause() instanceof AppException appException) {
+            throw appException;
+          }
+          throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
       }
 
       WalletCommand debitCommand = WalletCommand
@@ -290,4 +325,12 @@ public class TransactionServiceImpl implements TransactionService {
 
   }
 
+  private void saveToOutbox(String topic, String sagaId, Object payload) throws Exception {
+    OutboxMessage outboxMessage = OutboxMessage.builder()
+        .topic(topic)
+        .sagaId(sagaId)
+        .payload(objectMapper.writeValueAsString(payload))
+        .build();
+    outboxMessageRepository.save(outboxMessage);
+  }
 }

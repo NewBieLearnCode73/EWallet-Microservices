@@ -1,4 +1,4 @@
-package com.dinhchieu.ewallet.transaction_service.repositories;
+package com.dinhchieu.ewallet.transaction_service.repositories.jpa;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

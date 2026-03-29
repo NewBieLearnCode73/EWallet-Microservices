@@ -15,7 +15,7 @@ import com.dinhchieu.ewallet.transaction_service.enums.EventStatus;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionStatus;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionType;
 import com.dinhchieu.ewallet.transaction_service.models.entities.Transaction;
-import com.dinhchieu.ewallet.transaction_service.repositories.TransactionRepository;
+import com.dinhchieu.ewallet.transaction_service.repositories.jpa.TransactionRepository;
 import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessage;
 import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessageRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

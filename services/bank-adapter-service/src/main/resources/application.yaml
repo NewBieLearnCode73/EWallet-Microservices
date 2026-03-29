@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: bank-adapter-service
+
+  config:
+    import: configserver:http://localhost:8989

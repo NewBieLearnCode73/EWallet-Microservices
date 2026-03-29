@@ -1,11 +1,13 @@
 rootProject.name = 'ewallet-microservices'
 
-include 'common-library'
-include 'auth-service'
-include 'profile-service'
-include 'bank-adapter-service'
-include 'wallet-service'
-include 'transaction-service'
-include 'eureka-server'
-include 'api-gateway'
-include 'config-server'
+include 'libs:common-library'
+
+include 'services:api-gateway'
+include 'services:auth-service'
+include 'services:bank-adapter-service'
+include 'services:profile-service'
+include 'services:transaction-service'
+include 'services:wallet-service'
+
+include 'platforms:eureka-server'
+include 'platforms:config-server'

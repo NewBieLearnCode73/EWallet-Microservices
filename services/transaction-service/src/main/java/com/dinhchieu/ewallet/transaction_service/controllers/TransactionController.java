@@ -2,6 +2,8 @@ package com.dinhchieu.ewallet.transaction_service.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +23,13 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor
 public class TransactionController {
   private final TransactionService transactionService;
+
+  @GetMapping("/{id}")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> getTransactionById(@PathVariable String id) {
+    return ResponseEntity.ok(BaseResponse.builder().message("Lấy thông tin giao dịch thành công")
+        .data(transactionService.getTransactionById(id)).build());
+  }
 
   @PostMapping("/deposit")
   @PreAuthorize("isAuthenticated()")

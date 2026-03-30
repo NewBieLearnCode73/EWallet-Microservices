@@ -17,6 +17,7 @@ import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreation
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileExistResponseDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileFullNameResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.entities.LinkedBankAccount;
 import com.dinhchieu.ewallet.profile_service.models.entities.Profile;
@@ -74,7 +75,20 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts" }, key = "#userId")
+  @Cacheable(value = "profile_full_name", key = "#userId")
+  public ProfileFullNameResponseDto getProfileFullNameByUserId(UUID userId) {
+    Profile profile = profileRepository.findById(userId)
+        .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_FOUND));
+
+    return ProfileFullNameResponseDto
+        .builder()
+        .fullName(profile.getFullName())
+        .build();
+  }
+
+  @Override
+  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts",
+      "profile_full_name" }, key = "#userId")
   public void createProfile(UUID userId, ProfileCreationRequestDto request) {
 
     if (profileRepository.existsById(userId)) {
@@ -110,7 +124,8 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts" }, key = "#userId")
+  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts",
+      "profile_full_name" }, key = "#userId")
   public void updateProfile(UUID userId, ProfileUpdateRequestDto profileUpdateRequestDto) {
     Profile existingProfile = profileRepository.findById(userId)
         .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_EXIST));
@@ -143,7 +158,8 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts" }, key = "#userId")
+  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts",
+      "profile_full_name" }, key = "#userId")
   public void updateProfileStatus(String userId, ProfileStatus status) {
     UUID userUuid = UUID.fromString(userId);
     Profile profile = profileRepository.findById(userUuid)
@@ -155,7 +171,8 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts" }, key = "#userId")
+  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts",
+      "profile_full_name" }, key = "#userId")
   public void activateProfile(UUID userId) {
     Profile profile = profileRepository.findById(userId)
         .orElseThrow(() -> new AppException(ErrorCode.USER_PROFILE_NOT_EXIST));
@@ -171,7 +188,8 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts" }, key = "#userId")
+  @CacheEvict(value = { "profile_details", "profile_exists", "linked_bank_accounts",
+      "profile_full_name" }, key = "#userId")
   @Transactional
   public void linkBankAccount(UUID userId, LinkedBankAccountLinkingRequestDto request) {
 
@@ -192,4 +210,5 @@ public class ProfileServiceImpl implements ProfileService {
     linkedBankAccountRepository.save(linkedBankAccount);
     log.info("Linked bank account {} for user {}", request.getAccountNumber(), userId);
   }
+
 }

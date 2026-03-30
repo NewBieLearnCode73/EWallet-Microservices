@@ -9,6 +9,7 @@ import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileCreation
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileExistResponseDto;
+import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileFullNameResponseDto;
 import com.dinhchieu.ewallet.profile_service.models.dtos.response.ProfileResponseDto;
 
 public interface ProfileService {
@@ -83,4 +84,11 @@ public interface ProfileService {
    */
   public List<LinkedBankAccountsReponseDto> getMyLinkedBankAccounts(UUID userId);
 
+  /**
+   * Get the full name of the profile by user ID.
+   * 
+   * @param userId the ID of the user whose profile full name is to be retrieved
+   * @return ProfileFullNameResponseDto containing the full name of the profile
+   */
+  public ProfileFullNameResponseDto getProfileFullNameByUserId(UUID userId);
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import com.dinhchieu.ewallet.common_library.dtos.BaseResponse;
 import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.LinkedBankAccountsReponseDto;
 import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.ProfileExistResponseDto;
+import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.ProfileFullNameResponseDto;
 
 @FeignClient(name = "profile-service")
 public interface ProfileClient {
@@ -18,4 +19,9 @@ public interface ProfileClient {
 
   @GetMapping("/exists/{userId}")
   public ResponseEntity<BaseResponse<ProfileExistResponseDto>> isProfileExists(@PathVariable String userId);
+
+  @GetMapping("/fullname/{userId}")
+  public ResponseEntity<BaseResponse<ProfileFullNameResponseDto>> getProfileFullNameByUserId(
+      @PathVariable String userId);
+
 }

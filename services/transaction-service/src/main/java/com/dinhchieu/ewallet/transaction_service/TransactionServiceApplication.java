@@ -17,8 +17,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 		"com.dinhchieu.ewallet.transaction_service"
 })
 @EnableScheduling
-@EnableJpaRepositories(basePackages = "com.dinhchieu.ewallet.transaction_service.repositories.jpa")
-@EnableMongoRepositories(basePackages = "com.dinhchieu.ewallet.transaction_service.repositories.mongodb")
+@EnableJpaRepositories(basePackages = {
+		"com.dinhchieu.ewallet.transaction_service.repositories.jpa",
+		"com.dinhchieu.ewallet.transaction_service.sagas.outbox"
+})
+@EnableMongoRepositories(basePackages = "com.dinhchieu.ewallet.transaction_service.repositories.mongo")
 public class TransactionServiceApplication {
 
 	public static void main(String[] args) {

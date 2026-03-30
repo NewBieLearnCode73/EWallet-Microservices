@@ -79,7 +79,7 @@ public class TransactionOrchestrator {
         saga.setStatus(TransactionStatus.FAILED);
         transactionRepository.save(saga);
       }
-    }
+    } 
 
     else if (eventService.equals(TransactionEventService.WALLET_SERVICE.name())) {
       if (event.getStatus().equals(EventStatus.SUCCESS.name())) {

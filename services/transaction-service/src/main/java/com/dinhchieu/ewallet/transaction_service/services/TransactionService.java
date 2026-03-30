@@ -2,6 +2,7 @@ package com.dinhchieu.ewallet.transaction_service.services;
 
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.DepositFromBankResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.InternalTransferResponseDto;
+import com.dinhchieu.ewallet.transaction_service.models.dtos.response.TransactionResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.WithdrawToBankResponseDto;
 
 public interface TransactionService {
@@ -48,4 +49,14 @@ public interface TransactionService {
    * 
    */
   InternalTransferResponseDto processInternalTransfer(double amount, String destinationWalletId);
+
+  /**
+   * Retrieve transaction details by transaction ID and return a
+   * TransactionResponse
+   * 
+   * @param transactionId the ID of the transaction to be retrieved
+   * @return a TransactionResponse object containing the details of the
+   *         transaction
+   */
+  TransactionResponseDto getTransactionById(String transactionId);
 }

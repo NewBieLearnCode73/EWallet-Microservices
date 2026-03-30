@@ -28,6 +28,10 @@ spring:
     password: admin
     driver-class-name: org.postgresql.Driver
 
+    # MongoDB configuration
+  mongodb:
+    uri: mongodb://localhost:27017/transaction_db
+
   # Enable virtual threads for better concurrency
   threads:
     virtual:

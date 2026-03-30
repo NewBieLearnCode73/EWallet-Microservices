@@ -37,6 +37,7 @@ public enum ErrorCode {
   BANK_ACCOUNT_NOT_FOUND(3011, "Không tìm thấy tài khoản ngân hàng liên kết.", HttpStatus.NOT_FOUND),
   INSUFFICIENT_BALANCE(3012, "Số dư trong ví không đủ để thực hiện giao dịch.", HttpStatus.BAD_REQUEST),
   DESTINATION_WALLET_NOT_FOUND(3013, "Không tìm thấy ví đích trong giao dịch chuyển tiền.", HttpStatus.NOT_FOUND),
+  TRANSACTION_NOT_FOUND(3014, "Không tìm thấy giao dịch với ID đã cho.", HttpStatus.NOT_FOUND),
 
   // -- 5. COMPLIACE & LEGAL (40xx) --//
   MINOR_NOT_ALLOWED(4001, "Người dùng chưa đủ tuổi để sử dụng dịch vụ.", HttpStatus.FORBIDDEN),

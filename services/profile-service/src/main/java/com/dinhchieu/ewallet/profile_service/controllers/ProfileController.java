@@ -20,6 +20,7 @@ import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileStatusUp
 import com.dinhchieu.ewallet.profile_service.models.dtos.request.ProfileUpdateRequestDto;
 import com.dinhchieu.ewallet.profile_service.services.ProfileService;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -29,6 +30,17 @@ import lombok.AllArgsConstructor;
 public class ProfileController {
 
     private final ProfileService profileService;
+
+    @GetMapping("/fullname/{userId}")
+    @PermitAll
+    public ResponseEntity<BaseResponse<Object>> getProfileById(@PathVariable String userId) {
+        UUID userUuid = UUID.fromString(userId);
+
+        return ResponseEntity.ok(BaseResponse.builder()
+                .message("Lấy thông tin cá nhân thành công")
+                .data(profileService.getProfileFullNameByUserId(userUuid))
+                .build());
+    }
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")

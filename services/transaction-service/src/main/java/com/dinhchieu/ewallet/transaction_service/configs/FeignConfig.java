@@ -1,6 +1,7 @@
 package com.dinhchieu.ewallet.transaction_service.configs;
 
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import com.dinhchieu.ewallet.common_library.exceptions.AppException;
 import com.dinhchieu.ewallet.common_library.exceptions.ErrorCode;
 
+import feign.Request;
 import feign.RequestInterceptor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -53,4 +55,10 @@ public class FeignConfig {
     }
     return jwt.getExpiresAt().isBefore(Instant.now().plusSeconds(10));
   }
+
+  @Bean
+  public Request.Options options() {
+    return new Request.Options(2000, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, true);
+  }
+
 }

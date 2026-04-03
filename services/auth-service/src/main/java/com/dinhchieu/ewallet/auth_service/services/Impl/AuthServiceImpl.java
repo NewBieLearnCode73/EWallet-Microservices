@@ -22,6 +22,8 @@ import com.dinhchieu.ewallet.common_library.security.services.TokenBlacklistServ
 import com.dinhchieu.ewallet.common_library.utils.CookieUtils;
 
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,23 +43,18 @@ public class AuthServiceImpl implements AuthService {
 
   @Value("${keycloak.admin-client.realm}")
   private String keycloakRealm;
-
   @Value("${keycloak.admin-client.client-id}")
   private String keycloakClientId;
-
   @Value("${keycloak.admin-client.client-secret}")
   private String keycloakClientSecret;
-
-  @Value("${keycloak.admin-client.server-url}")
-  private String keycloakServerUrl;
-
   @Value("${token.expiration.access-token}")
   private int accessTokenExpiration;
-
   @Value("${token.expiration.refresh-token}")
   private int refreshTokenExpiration;
 
   @Override
+  @Retry(name = "authServiceRetry", fallbackMethod = "authFallback")
+  @CircuitBreaker(name = "authServiceCircuitBreaker")
   public void register(String username, String password, String email) {
     UserRepresentation user = new UserRepresentation();
     user.setUsername(username);
@@ -71,37 +68,28 @@ public class AuthServiceImpl implements AuthService {
 
     try (Response response = keycloak.realm(keycloakRealm).users().create(user)) {
       if (response.getStatus() == 409) {
-        log.warn("Email already exists: {}", email);
         throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
       }
-
       if (response.getStatus() != 201) {
-        log.error("Failed to register user: HTTP {}", response.getStatus());
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        // Throw for Resilience to catch and trigger fallback
+        throw new RuntimeException("Keycloak creation failed with status: " + response.getStatus());
       }
-    } catch (AppException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Exception during user registration: {}", e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }
-
   }
 
   @Override
+  @Retry(name = "authServiceRetry", fallbackMethod = "authFallback")
+  @CircuitBreaker(name = "authServiceCircuitBreaker")
   public void login(String username, String password, HttpServletResponse httpServletResponse) {
+    KeyCloakLoginRequestDto params = KeyCloakLoginRequestDto.builder()
+        .client_id(keycloakClientId)
+        .client_secret(keycloakClientSecret)
+        .username(username)
+        .password(password)
+        .build();
 
     try {
-      KeyCloakLoginRequestDto params = KeyCloakLoginRequestDto.builder()
-          .client_id(keycloakClientId)
-          .client_secret(keycloakClientSecret)
-          .username(username)
-          .password(password)
-          .build();
-
-      Map<String, Object> keycloakResponse = keyCloakClient.login(
-          keycloakRealm,
-          params);
+      Map<String, Object> keycloakResponse = keyCloakClient.login(keycloakRealm, params);
 
       if (keycloakResponse != null) {
         String accessToken = (String) keycloakResponse.get("access_token");
@@ -114,41 +102,30 @@ public class AuthServiceImpl implements AuthService {
         httpServletResponse.addCookie(accessTokenCookie);
         httpServletResponse.addCookie(refreshTokenCookie);
       }
-
     } catch (FeignException e) {
       if (e.status() >= 400 && e.status() < 500) {
-        log.warn("Keycloak login từ chối (HTTP {}): {}", e.status(), username);
         throw new AppException(ErrorCode.UNAUTHENTICATED);
       }
-      log.error("Keycloak login lỗi server (HTTP {}): {}", e.status(), e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-    } catch (Exception e) {
-      log.error("Lỗi không xác định khi login: {}", e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+      throw e;
     }
   }
 
   @Override
+  @Retry(name = "authServiceRetry", fallbackMethod = "authFallback")
+  @CircuitBreaker(name = "authServiceCircuitBreaker")
   public void logout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
-
     Cookie refreshTokenCookie = WebUtils.getCookie(httpServletRequest, "refresh_token");
     Cookie accessTokenCookie = WebUtils.getCookie(httpServletRequest, "access_token");
 
     if (accessTokenCookie != null && !accessTokenCookie.getValue().isEmpty()) {
       try {
-        blacklistService.blacklistToken(jwtDecoder.decode(accessTokenCookie.getValue()).getId(),
-            accessTokenExpiration);
+        blacklistService.blacklistToken(jwtDecoder.decode(accessTokenCookie.getValue()).getId(), accessTokenExpiration);
       } catch (Exception e) {
-        log.warn("Không thể blacklist access token khi logout: {}", e.getMessage());
+        log.warn("Blacklist local failed: {}", e.getMessage());
       }
     }
 
-    if (refreshTokenCookie == null || refreshTokenCookie.getValue().isEmpty()) {
-      CookieUtils.clearAuthCookies(httpServletResponse);
-      return;
-    }
-
-    try {
+    if (refreshTokenCookie != null && !refreshTokenCookie.getValue().isEmpty()) {
       KeyCloakLogoutRequestDto params = KeyCloakLogoutRequestDto.builder()
           .client_id(keycloakClientId)
           .client_secret(keycloakClientSecret)
@@ -156,87 +133,55 @@ public class AuthServiceImpl implements AuthService {
           .build();
 
       keyCloakClient.logout(keycloakRealm, params);
-
-    } catch (FeignException e) {
-      log.error("Lỗi từ Keycloak khi logout (Token có thể đã chết): HTTP {}", e.status());
-    } catch (Exception e) {
-      log.error("Lỗi không xác định khi gọi Keycloak: {}", e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-    } finally {
-      CookieUtils.clearAuthCookies(httpServletResponse);
     }
+
+    CookieUtils.clearAuthCookies(httpServletResponse);
   }
 
   @Override
+  @Retry(name = "authServiceRetry", fallbackMethod = "authFallback")
+  @CircuitBreaker(name = "authServiceCircuitBreaker")
   public void refreshToken(HttpServletRequest request, HttpServletResponse response) {
     Cookie requestRefreshTokenCookie = WebUtils.getCookie(request, "refresh_token");
-
-    if (requestRefreshTokenCookie == null || requestRefreshTokenCookie.getValue().isEmpty()) {
+    if (requestRefreshTokenCookie == null)
       throw new AppException(ErrorCode.MISSING_AUTHENTICATION);
-    }
 
-    String refreshToken = requestRefreshTokenCookie.getValue();
+    KeyCloakRefreshTokenRequestDto params = KeyCloakRefreshTokenRequestDto.builder()
+        .client_id(keycloakClientId)
+        .client_secret(keycloakClientSecret)
+        .refresh_token(requestRefreshTokenCookie.getValue())
+        .build();
 
     try {
-
-      KeyCloakRefreshTokenRequestDto params = KeyCloakRefreshTokenRequestDto.builder()
-          .client_id(keycloakClientId)
-          .client_secret(keycloakClientSecret)
-          .refresh_token(refreshToken)
-          .build();
-
-      Map<String, Object> keycloakResponse = keyCloakClient.refreshToken(
-          keycloakRealm,
-          params);
-
+      Map<String, Object> keycloakResponse = keyCloakClient.refreshToken(keycloakRealm, params);
       if (keycloakResponse != null) {
         String newAccessToken = (String) keycloakResponse.get("access_token");
         String newRefreshToken = (String) keycloakResponse.get("refresh_token");
-
-        Cookie accessTokenCookie = CookieUtils.setCookie("access_token", newAccessToken, accessTokenExpiration, true,
-            "/");
-        Cookie refreshTokenCookie = CookieUtils.setCookie("refresh_token", newRefreshToken, refreshTokenExpiration,
-            true, "/");
-
-        response.addCookie(accessTokenCookie);
-        response.addCookie(refreshTokenCookie);
+        response.addCookie(CookieUtils.setCookie("access_token", newAccessToken, accessTokenExpiration, true, "/"));
+        response.addCookie(CookieUtils.setCookie("refresh_token", newRefreshToken, refreshTokenExpiration, true, "/"));
       }
-
     } catch (FeignException e) {
-      if (e.status() >= 400 && e.status() < 500) {
-        log.warn("Keycloak refresh token từ chối (HTTP {})", e.status());
+      if (e.status() >= 400 && e.status() < 500)
         throw new AppException(ErrorCode.UNAUTHENTICATED);
-      }
-      log.error("Lỗi từ Keycloak khi refresh token: HTTP {}", e.status());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-    } catch (Exception e) {
-      log.error("Lỗi không xác định khi gọi Keycloak: {}", e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+      throw e;
     }
   }
 
   @Override
+  @Retry(name = "authServiceRetry", fallbackMethod = "authFallback")
+  @CircuitBreaker(name = "authServiceCircuitBreaker")
   public void revokeAllSessions(HttpServletRequest request) {
     Cookie accessTokenCookie = WebUtils.getCookie(request, "access_token");
-    if (accessTokenCookie == null || accessTokenCookie.getValue().isEmpty())
+    if (accessTokenCookie == null)
       throw new AppException(ErrorCode.MISSING_AUTHENTICATION);
 
-    try {
-      Jwt accessToken = jwtDecoder.decode(accessTokenCookie.getValue());
-      String userId = accessToken.getSubject();
-
-      keycloak.realm(keycloakRealm).users().get(userId).logout();
-
-      blacklistService.blacklistToken(accessToken.getId(), accessTokenExpiration);
-
-      log.info("Đã thu hồi tất cả phiên cho user ID: {}", userId);
-
-    } catch (AppException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Lỗi khi thu hồi tất cả phiên: {}", e.getMessage());
-      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-    }
+    Jwt accessToken = jwtDecoder.decode(accessTokenCookie.getValue());
+    keycloak.realm(keycloakRealm).users().get(accessToken.getSubject()).logout();
+    blacklistService.blacklistToken(accessToken.getId(), accessTokenExpiration);
   }
 
+  public void authFallback(Throwable t) {
+    log.error("RESILIENCE KÍCH HOẠT - Lỗi: {}", t.getMessage());
+    throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+  }
 }

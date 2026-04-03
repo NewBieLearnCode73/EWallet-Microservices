@@ -40,6 +40,8 @@ import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessageRepos
 import com.dinhchieu.ewallet.transaction_service.services.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -82,6 +84,8 @@ public class TransactionServiceImpl implements TransactionService {
   // Deposit : Bank -> Wallet : Nạp tiền từ ngân hàng vào ví
   // Trừ tiền ngân hàng trước
   @Override
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
   public DepositFromBankResponseDto processDepositFromBank(double amount, String bankCode, String accountNumber) {
 
     try {
@@ -203,6 +207,8 @@ public class TransactionServiceImpl implements TransactionService {
   // Withdraw : Wallet -> Bank : Rút tiền từ ví về ngân hàng
   // Trừ tiền ví trước
   @Override
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
   public WithdrawToBankResponseDto processWithdrawalFromBank(double amount, String bankCode, String accountNumber) {
     try {
       UUID sagaId = UUID.randomUUID();
@@ -335,6 +341,8 @@ public class TransactionServiceImpl implements TransactionService {
   }
 
   @Override
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
   public InternalTransferResponseDto processInternalTransfer(double amount,
       String destinationWalletId) {
 
@@ -476,4 +484,8 @@ public class TransactionServiceImpl implements TransactionService {
     outboxMessageRepository.save(outboxMessage);
   }
 
+  public Object transactionFallback(Throwable t) {
+    log.error("TRANSACTION SERVICE FALLBACK: {}", t.getMessage());
+    throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+  }
 }

@@ -1,9 +1,12 @@
 plugins {
     id 'java-library'
     id 'com.github.davidmc24.gradle.plugin.avro'
+    id 'io.spring.dependency-management'
 }
 
 dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.4')
+
     api 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     api 'org.springframework.boot:spring-boot-starter-web'
     api 'org.springframework.boot:spring-boot-starter-validation'
@@ -17,7 +20,10 @@ dependencies {
     api 'io.confluent:kafka-avro-serializer:8.1.1'
     api 'io.confluent:kafka-schema-registry-client:8.1.1'
     api 'org.apache.avro:avro:1.12.1'
-}
+
+    // Resilience
+    api 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    api 'org.springframework.boot:spring-boot-starter-aop:3.3.4'}
 
 generateAvroJava  {
     source("src/main/resources/avro")

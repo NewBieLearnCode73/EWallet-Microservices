@@ -42,7 +42,11 @@ public enum ErrorCode {
   // -- 5. COMPLIACE & LEGAL (40xx) --//
   MINOR_NOT_ALLOWED(4001, "Người dùng chưa đủ tuổi để sử dụng dịch vụ.", HttpStatus.FORBIDDEN),
   BANK_CODE_SYSTEM_ERROR(4002, "Lỗi hệ thống ngân hàng!", HttpStatus.INTERNAL_SERVER_ERROR),
-  BANK_CODE_NOT_SUPPORTED(4003, "Mã ngân hàng không được hỗ trợ.", HttpStatus.BAD_REQUEST);
+  BANK_CODE_NOT_SUPPORTED(4003, "Mã ngân hàng không được hỗ trợ.", HttpStatus.BAD_REQUEST),
+
+  // -- 6. EXTERNAL SERVICE (50xx) --//
+  EXTERNAL_SERVICE_TIMEOUT(5001, "Dịch vụ bên ngoài không phản hồi kịp thời.", HttpStatus.GATEWAY_TIMEOUT),
+  EXTERNAL_SERVICE_ERROR(5002, "Lỗi khi gọi dịch vụ bên ngoài.", HttpStatus.BAD_GATEWAY);
 
   private final int code;
   private final String message;

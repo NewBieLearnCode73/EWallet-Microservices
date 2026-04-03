@@ -3,4 +3,6 @@ spring:
     name: api-gateway
 
   config:
-    import: configserver:http://localhost:8989
+    import:
+      - "optional:file:${CONFIG_PATH}/application.yaml"
+      - "optional:file:${CONFIG_PATH}/${spring.application.name}.yaml"

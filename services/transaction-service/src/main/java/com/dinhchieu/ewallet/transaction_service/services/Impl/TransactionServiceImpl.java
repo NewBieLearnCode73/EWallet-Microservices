@@ -8,6 +8,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,9 +31,11 @@ import com.dinhchieu.ewallet.transaction_service.clients.dtos.response.WalletBal
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionStatus;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionType;
 import com.dinhchieu.ewallet.transaction_service.enums.TransactionWalletCommandType;
+import com.dinhchieu.ewallet.transaction_service.models.dtos.request.TransactionSearchRequestDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.DepositFromBankResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.InternalTransferResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.TransactionResponseDto;
+import com.dinhchieu.ewallet.transaction_service.models.dtos.response.TransactionSearchResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.WithdrawToBankResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.entities.Transaction;
 import com.dinhchieu.ewallet.transaction_service.models.entities.TransactionDocument;
@@ -79,6 +85,171 @@ public class TransactionServiceImpl implements TransactionService {
         .createdAt(transactionDocument.getCreatedAt())
         .updatedAt(transactionDocument.getUpdatedAt())
         .build();
+  }
+
+  @Override
+  public TransactionSearchResponseDto searchTransactions(String userId, TransactionSearchRequestDto searchRequest) {
+    try {
+      // Set default values
+      int page = searchRequest.getPage() != null ? searchRequest.getPage() : 0;
+      int pageSize = searchRequest.getPageSize() != null ? searchRequest.getPageSize() : 10;
+      String sortBy = searchRequest.getSortBy() != null ? searchRequest.getSortBy() : "createdAt";
+      String sortOrder = searchRequest.getSortOrder() != null ? searchRequest.getSortOrder() : "DESC";
+
+      // Create Sort object
+      Sort.Direction direction = sortOrder.toUpperCase().equals("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+      Sort sort = Sort.by(direction, sortBy);
+
+      // Create Pageable object
+      Pageable pageable = PageRequest.of(page, pageSize, sort);
+
+      // User can only search their own wallet - ignore walletId from request
+      String walletId = userId;
+
+      // Search based on provided filters
+      Page<TransactionDocument> transactionsPage = null;
+
+      if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
+        // Search by wallet ID and status
+        transactionsPage = transactionDocumentRepository.findBySourceWalletIdAndStatus(walletId,
+            searchRequest.getStatus(), pageable);
+
+        if (transactionsPage == null || transactionsPage.isEmpty()) {
+          transactionsPage = transactionDocumentRepository.findByDestinationWalletIdAndStatus(walletId,
+              searchRequest.getStatus(), pageable);
+        }
+      } else {
+        // Search by wallet ID (source or destination)
+        transactionsPage = transactionDocumentRepository.findBySourceWalletIdOrDestinationWalletId(walletId,
+            walletId, pageable);
+      }
+
+      if (transactionsPage == null) {
+        transactionsPage = Page.empty(pageable);
+      }
+
+      // Convert to response DTOs
+      List<TransactionResponseDto> transactionResponses = transactionsPage.getContent()
+          .stream()
+          .map(doc -> TransactionResponseDto.builder()
+              .transactionId(doc.getId())
+              .amount(doc.getAmount())
+              .type(doc.getType() != null ? doc.getType().name() : null)
+              .sourceWalletId(doc.getSourceWalletId())
+              .sourceUserName(doc.getSourceUserName())
+              .destinationWalletId(doc.getDestinationWalletId())
+              .destinationUserName(doc.getDestinationUserName())
+              .description(doc.getDescription())
+              .status(doc.getStatus())
+              .createdAt(doc.getCreatedAt())
+              .updatedAt(doc.getUpdatedAt())
+              .build())
+          .toList();
+
+      log.info("Search transactions for user: {}, found: {} results", userId, transactionsPage.getTotalElements());
+
+      return TransactionSearchResponseDto.builder()
+          .transactions(transactionResponses)
+          .currentPage(page)
+          .pageSize(pageSize)
+          .totalElements(transactionsPage.getTotalElements())
+          .totalPages(transactionsPage.getTotalPages())
+          .isFirst(transactionsPage.isFirst())
+          .isLast(transactionsPage.isLast())
+          .hasNext(transactionsPage.hasNext())
+          .hasPrevious(transactionsPage.hasPrevious())
+          .build();
+    } catch (Exception e) {
+      log.error("Error searching transactions for user: {}", userId, e);
+      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+    }
+  }
+
+  @Override
+  public TransactionSearchResponseDto adminSearchAllTransactions(TransactionSearchRequestDto searchRequest) {
+    try {
+      // Set default values
+      int page = searchRequest.getPage() != null ? searchRequest.getPage() : 0;
+      int pageSize = searchRequest.getPageSize() != null ? searchRequest.getPageSize() : 10;
+      String sortBy = searchRequest.getSortBy() != null ? searchRequest.getSortBy() : "createdAt";
+      String sortOrder = searchRequest.getSortOrder() != null ? searchRequest.getSortOrder() : "DESC";
+
+      // Create Sort object
+      Sort.Direction direction = sortOrder.toUpperCase().equals("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+      Sort sort = Sort.by(direction, sortBy);
+
+      // Create Pageable object
+      Pageable pageable = PageRequest.of(page, pageSize, sort);
+
+      // Admin can search by walletId or get all transactions
+      Page<TransactionDocument> transactionsPage = null;
+
+      // If walletId is provided, search for that wallet
+      if (searchRequest.getWalletId() != null && !searchRequest.getWalletId().isEmpty()) {
+        String walletId = searchRequest.getWalletId();
+        if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
+          // Search wallet by ID and status
+          transactionsPage = transactionDocumentRepository.findBySourceWalletIdAndStatus(walletId,
+              searchRequest.getStatus(), pageable);
+          if (transactionsPage == null || transactionsPage.isEmpty()) {
+            transactionsPage = transactionDocumentRepository.findByDestinationWalletIdAndStatus(walletId,
+                searchRequest.getStatus(), pageable);
+          }
+        } else {
+          // Search wallet by ID (source or destination)
+          transactionsPage = transactionDocumentRepository.findBySourceWalletIdOrDestinationWalletId(walletId,
+              walletId, pageable);
+        }
+      } else {
+        // No walletId provided - search all transactions
+        if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
+          // Admin search by status only
+          transactionsPage = transactionDocumentRepository.findByStatus(searchRequest.getStatus(), pageable);
+        } else {
+          // Admin get all transactions
+          transactionsPage = transactionDocumentRepository.findAll(pageable);
+        }
+      }
+
+      if (transactionsPage == null) {
+        transactionsPage = Page.empty(pageable);
+      }
+
+      // Convert to response DTOs
+      List<TransactionResponseDto> transactionResponses = transactionsPage.getContent()
+          .stream()
+          .map(doc -> TransactionResponseDto.builder()
+              .transactionId(doc.getId())
+              .amount(doc.getAmount())
+              .type(doc.getType() != null ? doc.getType().name() : null)
+              .sourceWalletId(doc.getSourceWalletId())
+              .sourceUserName(doc.getSourceUserName())
+              .destinationWalletId(doc.getDestinationWalletId())
+              .destinationUserName(doc.getDestinationUserName())
+              .description(doc.getDescription())
+              .status(doc.getStatus())
+              .createdAt(doc.getCreatedAt())
+              .updatedAt(doc.getUpdatedAt())
+              .build())
+          .toList();
+
+      log.info("Admin search transactions, found: {} results", transactionsPage.getTotalElements());
+
+      return TransactionSearchResponseDto.builder()
+          .transactions(transactionResponses)
+          .currentPage(page)
+          .pageSize(pageSize)
+          .totalElements(transactionsPage.getTotalElements())
+          .totalPages(transactionsPage.getTotalPages())
+          .isFirst(transactionsPage.isFirst())
+          .isLast(transactionsPage.isLast())
+          .hasNext(transactionsPage.hasNext())
+          .hasPrevious(transactionsPage.hasPrevious())
+          .build();
+    } catch (Exception e) {
+      log.error("Error in admin search all transactions", e);
+      throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+    }
   }
 
   // Deposit : Bank -> Wallet : Nạp tiền từ ngân hàng vào ví

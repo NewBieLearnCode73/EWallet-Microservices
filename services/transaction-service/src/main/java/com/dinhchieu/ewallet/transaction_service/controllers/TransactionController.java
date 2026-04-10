@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.dinhchieu.ewallet.common_library.dtos.BaseResponse;
+import com.dinhchieu.ewallet.common_library.utils.SecurityUtils;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.request.InternalTransferRequestDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.request.TransactionDepositRequestDto;
+import com.dinhchieu.ewallet.transaction_service.models.dtos.request.TransactionSearchRequestDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.request.TransactionWithdrawRequestDto;
 import com.dinhchieu.ewallet.transaction_service.services.TransactionService;
 
@@ -29,6 +31,15 @@ public class TransactionController {
   public ResponseEntity<BaseResponse<Object>> getTransactionById(@PathVariable String id) {
     return ResponseEntity.ok(BaseResponse.builder().message("Lấy thông tin giao dịch thành công")
         .data(transactionService.getTransactionById(id)).build());
+  }
+
+  @GetMapping("/search")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<BaseResponse<Object>> searchTransactions(
+      @Valid @RequestBody TransactionSearchRequestDto searchRequest) {
+    var userId = SecurityUtils.getAuthenticatedUserId().toString();
+    var result = transactionService.searchTransactions(userId, searchRequest);
+    return ResponseEntity.ok(BaseResponse.builder().message("Tìm kiếm giao dịch thành công").data(result).build());
   }
 
   @PostMapping("/deposit")
@@ -52,5 +63,14 @@ public class TransactionController {
   public ResponseEntity<BaseResponse<Object>> transfer(@Valid @RequestBody InternalTransferRequestDto request) {
     var result = transactionService.processInternalTransfer(request.getAmount(), request.getDestinationWalletId());
     return ResponseEntity.ok(BaseResponse.builder().message("Chuyển tiền thành công").data(result).build());
+  }
+
+  @GetMapping("/admin/search")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<BaseResponse<Object>> adminSearchAllTransactions(
+      @Valid @RequestBody TransactionSearchRequestDto searchRequest) {
+    var result = transactionService.adminSearchAllTransactions(searchRequest);
+    return ResponseEntity
+        .ok(BaseResponse.builder().message("Admin tìm kiếm giao dịch thành công").data(result).build());
   }
 }

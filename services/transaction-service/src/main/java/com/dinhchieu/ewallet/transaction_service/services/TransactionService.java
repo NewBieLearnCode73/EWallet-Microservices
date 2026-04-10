@@ -1,8 +1,10 @@
 package com.dinhchieu.ewallet.transaction_service.services;
 
+import com.dinhchieu.ewallet.transaction_service.models.dtos.request.TransactionSearchRequestDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.DepositFromBankResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.InternalTransferResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.TransactionResponseDto;
+import com.dinhchieu.ewallet.transaction_service.models.dtos.response.TransactionSearchResponseDto;
 import com.dinhchieu.ewallet.transaction_service.models.dtos.response.WithdrawToBankResponseDto;
 
 public interface TransactionService {
@@ -59,4 +61,28 @@ public interface TransactionService {
    *         transaction
    */
   TransactionResponseDto getTransactionById(String transactionId);
+
+  /**
+   * Search for transactions by wallet ID with pagination and filtering
+   * 
+   * @param userId                      the ID of the authenticated user (for
+   *                                    validation)
+   * @param transactionSearchRequestDto the search criteria and pagination
+   *                                    parameters
+   * @return a TransactionSearchResponseDto containing the search results and
+   *         pagination info
+   */
+  TransactionSearchResponseDto searchTransactions(String userId,
+      TransactionSearchRequestDto transactionSearchRequestDto);
+
+  /**
+   * Admin search for all transactions with pagination and filtering
+   * 
+   * @param transactionSearchRequestDto the search criteria and pagination
+   *                                    parameters
+   * @return a TransactionSearchResponseDto containing the search results and
+   *         pagination info
+   */
+  TransactionSearchResponseDto adminSearchAllTransactions(
+      TransactionSearchRequestDto transactionSearchRequestDto);
 }

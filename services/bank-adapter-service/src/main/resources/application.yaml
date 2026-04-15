@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: bank-adapter-service
-
-  config:
-    import:
-      - "optional:file:${CONFIG_PATH}/application.yaml"
-      - "optional:file:${CONFIG_PATH}/${spring.application.name}.yaml"

@@ -1,0 +1,81 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  output:
+    ansi:
+      enabled: ALWAYS
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+  cache:
+    type: redis
+
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/auth/**
+              filters:
+                - StripPrefix=1
+
+            - id: profile-service
+              uri: lb://profile-service
+              predicates:
+                - Path=/profile/**
+              filters:
+                - StripPrefix=1
+
+            - id: bank-adapter-service
+              uri: lb://bank-adapter-service
+              predicates:
+                - Path=/bank-adapter/**
+              filters:
+                - StripPrefix=1
+
+            - id: transaction-service
+              uri: lb://transaction-service
+              predicates:
+                - Path=/transaction/**
+              filters:
+                - StripPrefix=1
+
+            - id: wallet-service
+              uri: lb://wallet-service
+              predicates:
+                - Path=/wallet/**
+              filters:
+                - StripPrefix=1
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/ewallet-realm
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    initial-instance-info-replication-interval-seconds: 5
+    registry-fetch-interval-seconds: 5
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    lease-expiration-duration-in-seconds: 5
+    lease-renewal-interval-in-seconds: 5
+    prefer-ip-address: false

@@ -22,7 +22,7 @@ services:
     image: quay.io/keycloak/keycloak:latest
     command: start
     environment:
-      KC_HOSTNAME: localhost
+      KC_HOSTNAME: keycloak # Sử dụng hostname "keycloak" để các service khác có thể kết nối.
       KC_HOSTNAME_PORT: 9999
       KC_HOSTNAME_STRICT_BACKCHANNEL: false
       KC_HTTP_ENABLED: true
@@ -97,9 +97,9 @@ services:
         limits:
           memory: 1G
 
-  kafka-ui-service:
+  kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui-service
+    container_name: kafka-ui
     ports:
       - "7777:8080"
     restart: unless-stopped
@@ -115,9 +115,9 @@ services:
         limits:
           memory: 150M
 
-  schema-registry-service:
+  schema-registry:
     image: confluentinc/cp-schema-registry:7.4.4
-    container_name: schema-registry-service
+    container_name: schema-registry
     restart: always
     ports:
       - "7878:8081"
@@ -149,6 +149,186 @@ services:
       resources:
         limits:
           memory: 256M
+
+  # ==================== EUREKA SERVER ====================
+  eureka-server:
+    build:
+      context: ../platforms/eureka-server
+      dockerfile: Dockerfile
+    image: ewallet/eureka-server:1.0.0
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== API GATEWAY ====================
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    image: ewallet/api-gateway:1.0.0
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - eureka-server
+      - redis
+      - keycloak
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== AUTH SERVICE ====================
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    image: ewallet/auth-service:1.0.0
+    container_name: auth-service
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    depends_on:
+      - eureka-server
+      - redis
+      - keycloak
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== WALLET SERVICE ====================
+  wallet-service:
+    build:
+      context: ../services/wallet-service
+      dockerfile: Dockerfile
+    image: ewallet/wallet-service:1.0.0
+    container_name: wallet-service
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_WALLET_DB: ${POSTGRES_WALLET_DB}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    depends_on:
+      - eureka-server
+      - postgres
+      - redis
+      - keycloak
+      - kafka
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== PROFILE SERVICE ====================
+  profile-service:
+    build:
+      context: ../services/profile-service
+      dockerfile: Dockerfile
+    image: ewallet/profile-service:1.0.0
+    container_name: profile-service
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PROFILE_DB: ${POSTGRES_PROFILE_DB}
+    depends_on:
+      - eureka-server
+      - postgres
+      - redis
+      - keycloak
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== TRANSACTION SERVICE ====================
+  transaction-service:
+    build:
+      context: ../services/transaction-service
+      dockerfile: Dockerfile
+    image: ewallet/transaction-service:1.0.0
+    container_name: transaction-service
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_TRANSACTION_DB: ${POSTGRES_TRANSACTION_DB}
+      MONGO_TRANSACTION_DB: ${MONGO_TRANSACTION_DB}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    depends_on:
+      - eureka-server
+      - postgres
+      - redis
+      - keycloak
+      - kafka
+      - mongodb
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==================== BANK ADAPTER SERVICE ====================
+  bank-adapter-service:
+    build:
+      context: ../services/bank-adapter-service
+      dockerfile: Dockerfile
+    image: ewallet/bank-adapter-service:1.0.0
+    container_name: bank-adapter-service
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_BANK_ADAPTER_DB: ${POSTGRES_BANK_ADAPTER_DB}
+    depends_on:
+      - eureka-server
+      - postgres
+      - redis
+      - keycloak
+      - kafka
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
   postgres_data:

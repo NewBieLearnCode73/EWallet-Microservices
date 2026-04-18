@@ -38,7 +38,6 @@ out/
 
 # Logs and bash
 *.log
-*.sh
 /logs/
 
 # Environment files

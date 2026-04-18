@@ -23,7 +23,11 @@ dependencies {
 
     // Resilience
     api 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
-    api 'org.springframework.boot:spring-boot-starter-aop:3.3.4'}
+    api 'org.springframework.boot:spring-boot-starter-aop:3.3.4'
+    
+    // Swagger 
+    api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+    }
 
 generateAvroJava  {
     source("src/main/resources/avro")

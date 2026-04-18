@@ -255,8 +255,8 @@ public class TransactionServiceImpl implements TransactionService {
   // Deposit : Bank -> Wallet : Nạp tiền từ ngân hàng vào ví
   // Trừ tiền ngân hàng trước
   @Override
-  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
-  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "depositFromBankFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "depositFromBankFallback")
   public DepositFromBankResponseDto processDepositFromBank(double amount, String bankCode, String accountNumber) {
 
     try {
@@ -378,8 +378,8 @@ public class TransactionServiceImpl implements TransactionService {
   // Withdraw : Wallet -> Bank : Rút tiền từ ví về ngân hàng
   // Trừ tiền ví trước
   @Override
-  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
-  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "withdrawFromBankFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "withdrawFromBankFallback")
   public WithdrawToBankResponseDto processWithdrawalFromBank(double amount, String bankCode, String accountNumber) {
     try {
       UUID sagaId = UUID.randomUUID();
@@ -512,8 +512,8 @@ public class TransactionServiceImpl implements TransactionService {
   }
 
   @Override
-  @Retry(name = "transactionServiceRetry", fallbackMethod = "transactionFallback")
-  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "transactionFallback")
+  @Retry(name = "transactionServiceRetry", fallbackMethod = "internalTransferFallback")
+  @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "internalTransferFallback")
   public InternalTransferResponseDto processInternalTransfer(double amount,
       String destinationWalletId) {
 
@@ -655,8 +655,20 @@ public class TransactionServiceImpl implements TransactionService {
     outboxMessageRepository.save(outboxMessage);
   }
 
-  public Object transactionFallback(Throwable t) {
-    log.error("TRANSACTION SERVICE FALLBACK: {}", t.getMessage());
+  public DepositFromBankResponseDto depositFromBankFallback(double amount, String bankCode, String accountNumber,
+      Throwable t) {
+    log.error("DEPOSIT FROM BANK FALLBACK: {}", t.getMessage());
+    throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+  }
+
+  public WithdrawToBankResponseDto withdrawFromBankFallback(double amount, String bankCode, String accountNumber,
+      Throwable t) {
+    log.error("WITHDRAWAL FROM BANK FALLBACK: {}", t.getMessage());
+    throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+  }
+
+  public InternalTransferResponseDto internalTransferFallback(double amount, String destinationWalletId, Throwable t) {
+    log.error("INTERNAL TRANSFER FALLBACK: {}", t.getMessage());
     throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
   }
 }

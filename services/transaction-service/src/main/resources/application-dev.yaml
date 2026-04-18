@@ -47,33 +47,8 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:19092
-
-    properties:
-      schema.registry.url: http://localhost:7878
-      specific.avro.reader: true
-
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
-      acks: all
-      retries: 3
-
-      properties:
-        enable.idempotence: true
-        max.in.flight.requests.per.connection: 1
-
-    consumer:
-      auto-offset-reset: earliest
-      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      properties:
-        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
-        spring.deserializer.value.delegate.class: io.confluent.kafka.serializers.KafkaAvroDeserializer
-
-        schema.registry.url: http://localhost:7878
-        specific.avro.reader: true
-
-        spring.deserializer.value.delegate.not.null: false
+    schema-registry-url: http://localhost:7878
+    specific-avro-reader: true
 
 eureka:
   client:

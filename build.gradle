@@ -18,7 +18,7 @@ allprojects {
 }
 
 ext {
-	set('springCloudVersion', "2025.1.0")
+        set('springCloudVersion', "2025.1.0")
 }
 
 subprojects {
@@ -43,7 +43,7 @@ subprojects {
         implementation("org.mapstruct:mapstruct:1.6.3")
 
         implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-	    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+            implementation 'org.springframework.boot:spring-boot-starter-kafka'
         
         // Cache and Redis dependencies
         implementation 'org.springframework.boot:spring-boot-starter-cache'
@@ -53,9 +53,7 @@ subprojects {
         annotationProcessor 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
-        testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
-        testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
-        testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+        testImplementation 'org.springframework.kafka:spring-kafka-test'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 

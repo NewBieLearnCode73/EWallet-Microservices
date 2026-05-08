@@ -28,7 +28,7 @@ public class TransactionController {
 
   @GetMapping("/{id}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<BaseResponse<Object>> getTransactionById(@PathVariable String id) {
+  public ResponseEntity<BaseResponse<Object>> getTransactionById(@PathVariable("id") String id) {
     return ResponseEntity.ok(BaseResponse.builder().message("Lấy thông tin giao dịch thành công")
         .data(transactionService.getTransactionById(id)).build());
   }

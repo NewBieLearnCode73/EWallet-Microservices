@@ -29,121 +29,121 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class ProfileController {
 
-    private final ProfileService profileService;
+        private final ProfileService profileService;
 
-    @GetMapping("/fullname/{userId}")
-    @PermitAll
-    public ResponseEntity<BaseResponse<Object>> getProfileById(@PathVariable String userId) {
-        UUID userUuid = UUID.fromString(userId);
+        @GetMapping("/fullname/{userId}")
+        @PermitAll
+        public ResponseEntity<BaseResponse<Object>> getProfileById(@PathVariable("userId") String userId) {
+                UUID userUuid = UUID.fromString(userId);
 
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Lấy thông tin cá nhân thành công")
-                .data(profileService.getProfileFullNameByUserId(userUuid))
-                .build());
-    }
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Lấy thông tin cá nhân thành công")
+                                .data(profileService.getProfileFullNameByUserId(userUuid))
+                                .build());
+        }
 
-    @GetMapping("/me")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> getMyProfile(HttpServletRequest request) {
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+        @GetMapping("/me")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> getMyProfile(HttpServletRequest request) {
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Lấy thông tin cá nhân thành công")
-                .data(profileService.getProfile(userId))
-                .build());
-    }
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Lấy thông tin cá nhân thành công")
+                                .data(profileService.getProfile(userId))
+                                .build());
+        }
 
-    @PostMapping("/me")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> createMyProfile(
-            @Valid @RequestBody ProfileCreationRequestDto request) {
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+        @PostMapping("/me")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> createMyProfile(
+                        @Valid @RequestBody ProfileCreationRequestDto request) {
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        profileService.createProfile(userId, request);
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Tạo hồ sơ cá nhân thành công")
-                .build());
-    }
+                profileService.createProfile(userId, request);
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Tạo hồ sơ cá nhân thành công")
+                                .build());
+        }
 
-    @PutMapping("/me")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> updateMyProfile(
-            @Valid @RequestBody ProfileUpdateRequestDto request) {
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+        @PutMapping("/me")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> updateMyProfile(
+                        @Valid @RequestBody ProfileUpdateRequestDto request) {
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        profileService.updateProfile(userId, request);
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Cập nhật hồ sơ cá nhân thành công")
-                .build());
-    }
+                profileService.updateProfile(userId, request);
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Cập nhật hồ sơ cá nhân thành công")
+                                .build());
+        }
 
-    @PatchMapping("/me/activate")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> activateMyProfile() {
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+        @PatchMapping("/me/activate")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> activateMyProfile() {
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        profileService.activateProfile(userId);
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Kích hoạt hồ sơ thành công")
-                .build());
-    }
+                profileService.activateProfile(userId);
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Kích hoạt hồ sơ thành công")
+                                .build());
+        }
 
-    @GetMapping("/me/linked-bank-accounts")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> getMyLinkedBankAccounts() {
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+        @GetMapping("/me/linked-bank-accounts")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> getMyLinkedBankAccounts() {
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Lấy danh sách các tài khoản ngân hàng liên kết thành công")
-                .data(profileService.getMyLinkedBankAccounts(userId))
-                .build());
-    }
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Lấy danh sách các tài khoản ngân hàng liên kết thành công")
+                                .data(profileService.getMyLinkedBankAccounts(userId))
+                                .build());
+        }
 
-    @PostMapping("/me/linked-bank-accounts")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> linkBankAccount(
-            @Valid @RequestBody LinkedBankAccountLinkingRequestDto request) {
+        @PostMapping("/me/linked-bank-accounts")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> linkBankAccount(
+                        @Valid @RequestBody LinkedBankAccountLinkingRequestDto request) {
 
-        UUID userId = SecurityUtils.getAuthenticatedUserId();
+                UUID userId = SecurityUtils.getAuthenticatedUserId();
 
-        profileService.linkBankAccount(userId, request);
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Liên kết tài khoản ngân hàng thành công")
-                .build());
-    }
+                profileService.linkBankAccount(userId, request);
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Liên kết tài khoản ngân hàng thành công")
+                                .build());
+        }
 
-    @GetMapping("/exists/{userId}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Object>> isProfileExists(@PathVariable String userId) {
-        UUID userUuid = UUID.fromString(userId);
+        @GetMapping("/exists/{userId}")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<BaseResponse<Object>> isProfileExists(@PathVariable("userId") String userId) {
+                UUID userUuid = UUID.fromString(userId);
 
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Kiểm tra tồn tại hồ sơ thành công")
-                .data(profileService.isProfileExists(
-                        userUuid))
-                .build());
-    }
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Kiểm tra tồn tại hồ sơ thành công")
+                                .data(profileService.isProfileExists(
+                                                userUuid))
+                                .build());
+        }
 
-    @GetMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<Object>> getProfileByUserId(@PathVariable String userId) {
-        UUID userUuid = UUID.fromString(userId);
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Lấy thông tin cá nhân thành công")
-                .data(profileService.getProfileByUserId(
-                        userUuid))
-                .build());
-    }
+        @GetMapping("/{userId}")
+        @PreAuthorize("hasRole('ADMIN')")
+        public ResponseEntity<BaseResponse<Object>> getProfileByUserId(@PathVariable("userId") String userId) {
+                UUID userUuid = UUID.fromString(userId);
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Lấy thông tin cá nhân thành công")
+                                .data(profileService.getProfileByUserId(
+                                                userUuid))
+                                .build());
+        }
 
-    @PatchMapping("/admin/{userId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<Object>> updateProfileStatus(
-            @PathVariable String userId,
-            @Valid @RequestBody ProfileStatusUpdateRequestDto request) {
-        profileService.updateProfileStatus(userId, request.getStatus());
-        return ResponseEntity.ok(BaseResponse.builder()
-                .message("Cập nhật trạng thái hồ sơ thành công")
-                .build());
-    }
+        @PatchMapping("/admin/{userId}/status")
+        @PreAuthorize("hasRole('ADMIN')")
+        public ResponseEntity<BaseResponse<Object>> updateProfileStatus(
+                        @PathVariable("userId") String userId,
+                        @Valid @RequestBody ProfileStatusUpdateRequestDto request) {
+                profileService.updateProfileStatus(userId, request.getStatus());
+                return ResponseEntity.ok(BaseResponse.builder()
+                                .message("Cập nhật trạng thái hồ sơ thành công")
+                                .build());
+        }
 
 }

@@ -24,7 +24,7 @@ public class WalletController {
 
   @GetMapping("/exists/{userId}")
   @PermitAll
-  public ResponseEntity<BaseResponse<Object>> isWalletExists(@PathVariable String userId) {
+  public ResponseEntity<BaseResponse<Object>> isWalletExists(@PathVariable("userId") String userId) {
 
     return ResponseEntity.ok(BaseResponse.builder()
         .message("Kiểm tra tồn tại ví thành công")

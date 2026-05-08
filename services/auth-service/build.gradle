@@ -12,9 +12,8 @@ dependencies {
 	implementation("org.keycloak:keycloak-admin-client:26.0.8")
 	// implementation 'org.springframework.cloud:spring-cloud-starter-config'
 	
-	testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

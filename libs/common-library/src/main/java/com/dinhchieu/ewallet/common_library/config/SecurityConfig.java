@@ -1,5 +1,6 @@
 package com.dinhchieu.ewallet.common_library.config;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -33,5 +34,12 @@ public class SecurityConfig {
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
     return http.build();
+  }
+
+  @Bean
+  public FilterRegistrationBean<JwtBlacklistFilter> jwtBlacklistFilterRegistration(JwtBlacklistFilter filter) {
+    FilterRegistrationBean<JwtBlacklistFilter> registrationBean = new FilterRegistrationBean<>(filter);
+    registrationBean.setEnabled(false); // Disable automatic registration
+    return registrationBean;
   }
 }

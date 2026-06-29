@@ -9,9 +9,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,6 +50,9 @@ import com.dinhchieu.ewallet.transaction_service.sagas.outbox.OutboxMessageRepos
 import com.dinhchieu.ewallet.transaction_service.services.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.transaction.annotation.Transactional;
+
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.AllArgsConstructor;
@@ -62,6 +69,7 @@ public class TransactionServiceImpl implements TransactionService {
   private final OutboxMessageRepository outboxMessageRepository;
   private final TransactionRepository transactionRepository;
   private final TransactionDocumentRepository transactionDocumentRepository;
+  private final MongoTemplate mongoTemplate;
 
   @Override
   public TransactionResponseDto getTransactionById(String transactionId) {
@@ -106,27 +114,45 @@ public class TransactionServiceImpl implements TransactionService {
       // User can only search their own wallet - ignore walletId from request
       String walletId = userId;
 
-      // Search based on provided filters
-      Page<TransactionDocument> transactionsPage = null;
-
-      if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
-        // Search by wallet ID and status
-        transactionsPage = transactionDocumentRepository.findBySourceWalletIdAndStatus(walletId,
-            searchRequest.getStatus(), pageable);
-
-        if (transactionsPage == null || transactionsPage.isEmpty()) {
-          transactionsPage = transactionDocumentRepository.findByDestinationWalletIdAndStatus(walletId,
-              searchRequest.getStatus(), pageable);
+      TransactionType typeEnum = null;
+      if (searchRequest.getTransactionType() != null && !searchRequest.getTransactionType().isEmpty()) {
+        try {
+          typeEnum = TransactionType.valueOf(searchRequest.getTransactionType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+          throw new AppException(ErrorCode.INVALID_INPUT);
         }
-      } else {
-        // Search by wallet ID (source or destination)
-        transactionsPage = transactionDocumentRepository.findBySourceWalletIdOrDestinationWalletId(walletId,
-            walletId, pageable);
       }
 
-      if (transactionsPage == null) {
-        transactionsPage = Page.empty(pageable);
+      TransactionStatus statusEnum = null;
+      if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
+        try {
+          statusEnum = TransactionStatus.valueOf(searchRequest.getStatus().toUpperCase());
+        } catch (IllegalArgumentException e) {
+          throw new AppException(ErrorCode.INVALID_INPUT);
+        }
       }
+
+      Query query = new Query();
+
+      // Filter by wallet ID (source or destination)
+      Criteria walletCriteria = new Criteria().orOperator(
+          Criteria.where("sourceWalletId").is(walletId),
+          Criteria.where("destinationWalletId").is(walletId)
+      );
+      query.addCriteria(walletCriteria);
+
+      if (statusEnum != null) {
+        query.addCriteria(Criteria.where("status").is(statusEnum));
+      }
+
+      if (typeEnum != null) {
+        query.addCriteria(Criteria.where("type").is(typeEnum));
+      }
+
+      long total = mongoTemplate.count(query, TransactionDocument.class);
+      query.with(pageable);
+      List<TransactionDocument> transactionDocuments = mongoTemplate.find(query, TransactionDocument.class);
+      Page<TransactionDocument> transactionsPage = new PageImpl<>(transactionDocuments, pageable, total);
 
       // Convert to response DTOs
       List<TransactionResponseDto> transactionResponses = transactionsPage.getContent()
@@ -159,6 +185,9 @@ public class TransactionServiceImpl implements TransactionService {
           .hasNext(transactionsPage.hasNext())
           .hasPrevious(transactionsPage.hasPrevious())
           .build();
+    } catch (AppException e) {
+      log.error("AppException in searchTransactions for user: {}", userId, e);
+      throw e;
     } catch (Exception e) {
       log.error("Error searching transactions for user: {}", userId, e);
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
@@ -181,39 +210,47 @@ public class TransactionServiceImpl implements TransactionService {
       // Create Pageable object
       Pageable pageable = PageRequest.of(page, pageSize, sort);
 
-      // Admin can search by walletId or get all transactions
-      Page<TransactionDocument> transactionsPage = null;
+      TransactionType typeEnum = null;
+      if (searchRequest.getTransactionType() != null && !searchRequest.getTransactionType().isEmpty()) {
+        try {
+          typeEnum = TransactionType.valueOf(searchRequest.getTransactionType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+          throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+      }
+
+      TransactionStatus statusEnum = null;
+      if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
+        try {
+          statusEnum = TransactionStatus.valueOf(searchRequest.getStatus().toUpperCase());
+        } catch (IllegalArgumentException e) {
+          throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+      }
+
+      Query query = new Query();
 
       // If walletId is provided, search for that wallet
       if (searchRequest.getWalletId() != null && !searchRequest.getWalletId().isEmpty()) {
-        String walletId = searchRequest.getWalletId();
-        if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
-          // Search wallet by ID and status
-          transactionsPage = transactionDocumentRepository.findBySourceWalletIdAndStatus(walletId,
-              searchRequest.getStatus(), pageable);
-          if (transactionsPage == null || transactionsPage.isEmpty()) {
-            transactionsPage = transactionDocumentRepository.findByDestinationWalletIdAndStatus(walletId,
-                searchRequest.getStatus(), pageable);
-          }
-        } else {
-          // Search wallet by ID (source or destination)
-          transactionsPage = transactionDocumentRepository.findBySourceWalletIdOrDestinationWalletId(walletId,
-              walletId, pageable);
-        }
-      } else {
-        // No walletId provided - search all transactions
-        if (searchRequest.getStatus() != null && !searchRequest.getStatus().isEmpty()) {
-          // Admin search by status only
-          transactionsPage = transactionDocumentRepository.findByStatus(searchRequest.getStatus(), pageable);
-        } else {
-          // Admin get all transactions
-          transactionsPage = transactionDocumentRepository.findAll(pageable);
-        }
+        Criteria walletCriteria = new Criteria().orOperator(
+            Criteria.where("sourceWalletId").is(searchRequest.getWalletId()),
+            Criteria.where("destinationWalletId").is(searchRequest.getWalletId())
+        );
+        query.addCriteria(walletCriteria);
       }
 
-      if (transactionsPage == null) {
-        transactionsPage = Page.empty(pageable);
+      if (statusEnum != null) {
+        query.addCriteria(Criteria.where("status").is(statusEnum));
       }
+
+      if (typeEnum != null) {
+        query.addCriteria(Criteria.where("type").is(typeEnum));
+      }
+
+      long total = mongoTemplate.count(query, TransactionDocument.class);
+      query.with(pageable);
+      List<TransactionDocument> transactionDocuments = mongoTemplate.find(query, TransactionDocument.class);
+      Page<TransactionDocument> transactionsPage = new PageImpl<>(transactionDocuments, pageable, total);
 
       // Convert to response DTOs
       List<TransactionResponseDto> transactionResponses = transactionsPage.getContent()
@@ -246,6 +283,9 @@ public class TransactionServiceImpl implements TransactionService {
           .hasNext(transactionsPage.hasNext())
           .hasPrevious(transactionsPage.hasPrevious())
           .build();
+    } catch (AppException e) {
+      log.error("AppException in adminSearchAllTransactions", e);
+      throw e;
     } catch (Exception e) {
       log.error("Error in admin search all transactions", e);
       throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
@@ -257,6 +297,7 @@ public class TransactionServiceImpl implements TransactionService {
   @Override
   @Retry(name = "transactionServiceRetry", fallbackMethod = "depositFromBankFallback")
   @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "depositFromBankFallback")
+  @Transactional
   public DepositFromBankResponseDto processDepositFromBank(double amount, String bankCode, String accountNumber) {
 
     try {
@@ -380,6 +421,7 @@ public class TransactionServiceImpl implements TransactionService {
   @Override
   @Retry(name = "transactionServiceRetry", fallbackMethod = "withdrawFromBankFallback")
   @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "withdrawFromBankFallback")
+  @Transactional
   public WithdrawToBankResponseDto processWithdrawalFromBank(double amount, String bankCode, String accountNumber) {
     try {
       UUID sagaId = UUID.randomUUID();
@@ -514,6 +556,7 @@ public class TransactionServiceImpl implements TransactionService {
   @Override
   @Retry(name = "transactionServiceRetry", fallbackMethod = "internalTransferFallback")
   @CircuitBreaker(name = "transactionServiceCircuitBreaker", fallbackMethod = "internalTransferFallback")
+  @Transactional
   public InternalTransferResponseDto processInternalTransfer(double amount,
       String destinationWalletId) {
 

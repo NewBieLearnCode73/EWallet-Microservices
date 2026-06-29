@@ -26,6 +26,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -77,6 +79,9 @@ public class TransactionServiceTests {
   @Mock
   private TransactionDocumentRepository transactionDocumentRepository;
 
+  @Mock
+  private MongoTemplate mongoTemplate;
+
   @InjectMocks
   private TransactionServiceImpl transactionServiceImpl;
 
@@ -121,10 +126,9 @@ public class TransactionServiceTests {
     String userId = "user1";
     TransactionSearchRequestDto request = new TransactionSearchRequestDto();
     TransactionDocument doc = TransactionDocument.builder().id("tx1").build();
-    Page<TransactionDocument> page = new PageImpl<>(List.of(doc));
 
-    when(transactionDocumentRepository.findBySourceWalletIdOrDestinationWalletId(eq(userId), eq(userId),
-        any(Pageable.class))).thenReturn(page);
+    when(mongoTemplate.count(any(Query.class), eq(TransactionDocument.class))).thenReturn(1L);
+    when(mongoTemplate.find(any(Query.class), eq(TransactionDocument.class))).thenReturn(List.of(doc));
 
     TransactionSearchResponseDto response = transactionServiceImpl.searchTransactions(userId, request);
 
@@ -137,9 +141,9 @@ public class TransactionServiceTests {
   void testAdminSearchAllTransactions_Success() {
     TransactionSearchRequestDto request = new TransactionSearchRequestDto();
     TransactionDocument doc = TransactionDocument.builder().id("tx1").build();
-    Page<TransactionDocument> page = new PageImpl<>(List.of(doc));
 
-    when(transactionDocumentRepository.findAll(any(Pageable.class))).thenReturn(page);
+    when(mongoTemplate.count(any(Query.class), eq(TransactionDocument.class))).thenReturn(1L);
+    when(mongoTemplate.find(any(Query.class), eq(TransactionDocument.class))).thenReturn(List.of(doc));
 
     TransactionSearchResponseDto response = transactionServiceImpl.adminSearchAllTransactions(request);
 
